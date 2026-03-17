@@ -636,6 +636,25 @@
       filter: brightness(0.3);
     }
 
+    /* Arp sync status badge */
+    .arp-sync-badge {
+      font-size: 0.48rem; font-weight: 800; letter-spacing: 2px;
+      padding: 3px 7px; border-radius: 3px;
+      background: linear-gradient(180deg, #1c1c1c, #111);
+      color: #555;
+      border: 1px solid #0d0d0d;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.6);
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .arp-sync-badge.synced {
+      background: linear-gradient(180deg, #0e2818, #071408);
+      color: #44c060;
+      border-color: #050e06;
+      box-shadow: inset 0 2px 3px rgba(0,0,0,0.5), 0 0 6px rgba(30,140,60,0.15);
+      text-shadow: 0 0 6px rgba(40,200,80,0.4);
+    }
+
     /* ─── TABLET (≤900px) ─── */
     @media (max-width: 900px) {
       body { padding: 10px; }
@@ -758,7 +777,7 @@
       .bpm-val { font-size: 0.75rem; }
 
       /* Wrap arp mode buttons */
-      #arpModeBtns, #arpSubdivBtns, #patternBtns { flex-wrap: wrap; gap: 5px; }
+      #arpModeBtns, #patternBtns { flex-wrap: wrap; gap: 5px; }
 
       /* Compact speaker */
       .speaker-grille { grid-template-columns: repeat(8, 6px); gap: 3px; padding: 5px; }
@@ -900,13 +919,16 @@
         </div>
       </div>
       <div class="panel-row">
+        <div class="knob-group">
+          <div class="knob-label">Speed</div>
+          <input type="range" id="arpSpeedCtrl" min="0" max="100" value="50">
+        </div>
+        <span class="arp-sync-badge" id="arpSyncBadge">FREE</span>
+      </div>
+      <div class="panel-row">
         <div class="knob-label" style="color:#444;font-size:0.5rem;width:100%;margin-bottom:3px">Mode</div>
       </div>
       <div class="panel-row" id="arpModeBtns"></div>
-      <div class="panel-row" style="margin-top:4px">
-        <div class="knob-label" style="color:#444;font-size:0.5rem;width:100%;margin-bottom:3px">Subdivision (synced to BPM)</div>
-      </div>
-      <div class="panel-row" id="arpSubdivBtns"></div>
     </div>
 
     <!-- Speaker -->
@@ -1187,14 +1209,18 @@ const ARP_MODES = {
   },
 };
 
-// Subdivision options: label → 16th-note multiplier
-const ARP_SUBDIVS = {
-  '1/16': 1,
-  '1/8' : 2,
-  '1/4' : 4,
-  '1/2' : 8,
-  '1'   : 16,
-};
+// ── Arp speed helpers ──
+// Slider 0-100 → 16th-note step count (synced) or ms interval (free)
+function getSubdivSteps() {
+  const val = parseInt(document.getElementById('arpSpeedCtrl').value);
+  // 0→16 steps (whole), 25→8 (½), 50→4 (¼), 75→2 (⅛), 100→1 (1/16)
+  return Math.max(1, Math.round(Math.pow(2, (1 - val / 100) * 4)));
+}
+function getArpFreeMs() {
+  const val = parseInt(document.getElementById('arpSpeedCtrl').value);
+  // Exponential: 0→900ms (slow), 50→220ms, 100→60ms (fast)
+  return Math.round(900 * Math.pow(60 / 900, val / 100));
+}
 
 // ═══════════════════════════════════════════════════════════
 //  MASTER SCHEDULER  (rhythm + arpeggiator, perfectly synced)
@@ -1209,12 +1235,11 @@ let arpActive    = false;
 
 let currentPattern = 'Bossa Nova';
 let bpm = 104;
-let currentArpMode   = '↑ Up';
-let currentArpSubdiv = '1/8';
+let currentArpMode = '↑ Up';
 let arpState = { pos: -1, dir: 1, step: 0, phase: 0 };
+let arpFreeTimer = null;
 
 function getStepMs() { return (60000 / bpm) / 4; }        // 16th note in ms
-function getSubdivSteps() { return ARP_SUBDIVS[currentArpSubdiv] || 2; }
 
 function getNextArpPos() {
   const fn = ARP_MODES[currentArpMode];
@@ -1291,37 +1316,82 @@ function checkStopMaster() {
   }
 }
 
+// ── Sync badge ──
+function updateArpSyncBadge() {
+  const badge = document.getElementById('arpSyncBadge');
+  if (!badge) return;
+  if (arpActive && rhythmActive) {
+    badge.textContent = 'SYNC'; badge.classList.add('synced');
+  } else {
+    badge.textContent = 'FREE'; badge.classList.remove('synced');
+  }
+}
+
+// ── Free-running arp tick (used when rhythm is OFF) ──
+function tickArpFree() {
+  if (!arpActive || rhythmActive) return;  // hand off to master if rhythm started
+  if (selRoot !== null) {
+    const idx = getNextArpPos();
+    const midi = strumNotes[idx];
+    if (midi) {
+      const vel = parseInt(document.getElementById('arpVol').value) / 100;
+      pluckString(midi, 0.7 * vel);
+      animateString(idx);
+      robotEvent('strum');
+    }
+  }
+  arpFreeTimer = setTimeout(tickArpFree, getArpFreeMs());
+}
+
+function stopArpFree() {
+  if (arpFreeTimer) { clearTimeout(arpFreeTimer); arpFreeTimer = null; }
+}
+
 function startRhythm() {
   if (rhythmActive) return;
   rhythmActive = true;
-  masterStep = 0; // reset to beat 1
+  masterStep = 0;
   arpState = { pos: -1, dir: 1, step: 0, phase: 0 };
+  // If arp was free-running, stop it — master will drive it now
+  stopArpFree();
   ensureMaster();
+  updateArpSyncBadge();
 }
 
 function stopRhythm() {
   rhythmActive = false;
   checkStopMaster();
+  // If arp is still active, switch it to free-running
+  if (arpActive) {
+    arpState = { pos: -1, dir: 1, step: 0, phase: 0 };
+    tickArpFree();
+  }
+  updateArpSyncBadge();
 }
 
 function startArp() {
   if (arpActive) return;
   arpActive = true;
-  if (!rhythmActive) {
-    // If rhythm is not playing, reset step so arp starts from beat 1
-    masterStep = 0;
-    arpState = { pos: -1, dir: 1, step: 0, phase: 0 };
+  arpState = { pos: -1, dir: 1, step: 0, phase: 0 };
+  if (rhythmActive) {
+    // Sync: let master scheduler drive it
+    ensureMaster();
+  } else {
+    // Free-running: own timer
+    tickArpFree();
   }
-  ensureMaster();
   document.getElementById('autoStrumBtn').textContent = '⏹ ARP';
   document.getElementById('autoStrumBtn').classList.add('active');
+  updateArpSyncBadge();
 }
 
 function stopArp() {
   arpActive = false;
+  stopArpFree();
   checkStopMaster();
   document.getElementById('autoStrumBtn').textContent = '▶ ARP';
   document.getElementById('autoStrumBtn').classList.remove('active');
+  updateArpSyncBadge();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1576,22 +1646,6 @@ function buildArpModeButtons() {
   });
 }
 
-function buildArpSubdivButtons() {
-  const c=document.getElementById('arpSubdivBtns');
-  const labels={'1/16':'♬ 16th','1/8':'♪ 8th','1/4':'♩ ¼','1/2':'𝅗𝅥 ½','1':'● 1'};
-  Object.keys(ARP_SUBDIVS).forEach((name,i)=>{
-    const btn=document.createElement('button');
-    btn.className='mode-btn'+(name==='1/8'?' active':'');
-    btn.textContent=labels[name]||name;
-    btn.title=`${name} note — synced to BPM`;
-    btn.addEventListener('click',()=>{
-      document.querySelectorAll('#arpSubdivBtns .mode-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      currentArpSubdiv=name;
-    });
-    c.appendChild(btn);
-  });
-}
 
 // ═══════════════════════════════════════════════════════════
 //  CONTROLS
@@ -1687,7 +1741,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   buildStrumplate();
   buildPatternButtons();
   buildArpModeButtons();
-  buildArpSubdivButtons();
   initControls();
   setRobotState('sleep');
 });
