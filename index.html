@@ -46,6 +46,7 @@
       border-radius: 50%;
       background: radial-gradient(circle at 38% 35%, #666, #2a2a2a);
       box-shadow: 0 1px 3px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.05);
+      z-index: 10;
     }
     .screw::after {
       content: '';
@@ -55,10 +56,10 @@
       background: rgba(0,0,0,0.6);
       transform: rotate(45deg);
     }
-    .screw.tl { top: 8px; left: 10px; }
-    .screw.tr { top: 8px; right: 10px; }
-    .screw.bl { bottom: 8px; left: 10px; }
-    .screw.br { bottom: 8px; right: 10px; }
+    .screw.tl { top: 10px; left: 12px; }
+    .screw.tr { top: 10px; right: 12px; }
+    .screw.bl { bottom: 10px; left: 12px; }
+    .screw.br { bottom: 10px; right: 12px; }
 
     /* Rubber feet */
     .instrument::after {
@@ -169,7 +170,8 @@
       text-shadow: 0 0 7px #00e060, 0 0 14px rgba(0,224,96,0.4);
       text-align: center;
       line-height: 1.3;
-      min-width: 120px;
+      width: 152px;
+      flex-shrink: 0;
       position: relative;
     }
 
@@ -214,7 +216,7 @@
       font-size: 1.1rem; font-weight: 700;
       color: #00e060;
       text-shadow: 0 0 8px #00e060, 0 0 16px rgba(0,224,96,0.3);
-      min-width: 130px; text-align: center;
+      width: 152px; flex-shrink: 0; text-align: center;
       letter-spacing: 3px;
       box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
     }
@@ -557,13 +559,12 @@
         inset 0 1px 0 rgba(255,255,255,0.1),
         inset 0 -1px 0 rgba(0,0,0,0.3);
       cursor: pointer; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px;
-      transition: transform 0.06s, box-shadow 0.06s, border-bottom-width 0.06s;
+      transition: transform 0.06s, box-shadow 0.06s;
     }
     .phys-btn:hover { color: #ccc; filter: brightness(1.1); }
     .phys-btn:active {
-      transform: translateY(2px);
-      border-bottom-width: 1px;
-      box-shadow: 0 1px 0 #040404, inset 0 2px 4px rgba(0,0,0,0.5);
+      transform: translateY(3px);
+      box-shadow: 0 0 0 #040404, inset 0 2px 4px rgba(0,0,0,0.5);
     }
     .phys-btn.active {
       background: linear-gradient(180deg,
@@ -634,6 +635,154 @@
     .instrument.powered-off .chord-name-badge,
     .instrument.powered-off .panel-box {
       filter: brightness(0.3);
+    }
+
+    /* Arp sync status badge */
+    .arp-sync-badge {
+      font-size: 0.48rem; font-weight: 800; letter-spacing: 2px;
+      padding: 3px 7px; border-radius: 3px;
+      background: linear-gradient(180deg, #1c1c1c, #111);
+      color: #555;
+      border: 1px solid #0d0d0d;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.6);
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .arp-sync-badge.synced {
+      background: linear-gradient(180deg, #0e2818, #071408);
+      color: #44c060;
+      border-color: #050e06;
+      box-shadow: inset 0 2px 3px rgba(0,0,0,0.5), 0 0 6px rgba(30,140,60,0.15);
+      text-shadow: 0 0 6px rgba(40,200,80,0.4);
+    }
+
+    /* ─── TABLET (≤900px) ─── */
+    @media (max-width: 900px) {
+      body { padding: 10px; }
+
+      .top-panel { gap: 10px; padding: 10px 12px; }
+      .brand-name { font-size: 1rem; letter-spacing: 3px; }
+      .robot-screen { width: 120px; padding: 8px 12px 6px; }
+      .robot-face-line { font-size: 0.9rem; }
+      .led-display { width: 120px; font-size: 0.9rem; }
+
+      input[type=range] { width: 60px; }
+
+      .strum-section { width: 180px; }
+      #strumplate { min-height: 240px; }
+
+      .arp-panel { min-width: 200px; }
+    }
+
+    /* ─── MOBILE (≤640px) ─── */
+    @media (max-width: 640px) {
+      body { padding: 6px; align-items: flex-start; }
+
+      .instrument {
+        border-radius: 14px;
+        padding: 10px 10px 14px;
+      }
+
+      /* Hide decorative corner screws on mobile */
+      .screw { display: none; }
+
+      /* ── Top panel: wrap into 2 rows ── */
+      .top-panel {
+        gap: 8px;
+        padding: 8px 10px;
+        justify-content: space-between;
+      }
+
+      .power-section { padding-right: 10px; }
+      .power-btn { width: 38px; height: 38px; font-size: 1rem; }
+
+      .brand-suzuki { font-size: 0.42rem; letter-spacing: 2px; }
+      .brand-name { font-size: 0.85rem; letter-spacing: 3px; }
+      .brand-model { font-size: 0.4rem; letter-spacing: 1px; }
+
+      .robot-wrap { padding: 0 10px; }
+      .robot-screen { width: 104px; padding: 7px 10px 5px; }
+      .robot-face-line { font-size: 0.85rem; letter-spacing: 2px; }
+      .robot-status-line { font-size: 0.45rem; letter-spacing: 1.5px; }
+
+      .led-display { width: 104px; font-size: 0.85rem; letter-spacing: 2px; padding: 4px 10px; }
+
+      /* Knobs: wrap tightly */
+      .top-controls {
+        width: 100%;
+        margin-left: 0;
+        justify-content: space-between;
+        gap: 6px;
+        padding-top: 4px;
+        border-top: 1px solid #1c1c1c;
+      }
+      .knob-group { gap: 2px; }
+      .knob-label { font-size: 0.42rem; }
+      input[type=range] { width: 52px; height: 5px; }
+
+      /* ── Main area: stack vertically ── */
+      .main-area { flex-direction: column; gap: 8px; }
+
+      /* Chord section fills width */
+      .chord-section { padding: 7px; }
+      .chord-grid {
+        grid-template-columns: 36px repeat(12, 1fr);
+        column-gap: 1px;
+        row-gap: 3px;
+      }
+      .chord-btn { min-height: 36px; font-size: 0.45rem; }
+      .note-hdr { font-size: 0.48rem; }
+      .row-lbl { font-size: 0.5rem; padding-right: 4px; }
+
+      /* Hide keyboard hint */
+      .kb-hint { display: none; }
+
+      /* Strumplate: horizontal strip below chord grid */
+      .strum-section {
+        width: 100%;
+        flex-direction: row;
+        gap: 7px;
+        height: 110px;
+        flex-shrink: 0;
+      }
+      .chord-name-badge {
+        width: 56px;
+        flex-shrink: 0;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5px 6px;
+      }
+      .chord-root { font-size: 1.3rem; }
+      .chord-sym { font-size: 0.7rem; }
+      .strum-frame { flex: 1; padding: 6px 5px; }
+      .strum-label { font-size: 0.4rem; letter-spacing: 2px; }
+      #strumplate {
+        flex: 1;
+        min-height: unset;
+        height: 100%;
+        /* On mobile strumplate strings run left-to-right naturally */
+      }
+      .frame-screw { display: none; }
+
+      /* ── Bottom panel ── */
+      .bottom-panel { flex-direction: column; gap: 8px; }
+      .panel-box { padding: 8px 10px; }
+      .panel-title { font-size: 0.42rem; letter-spacing: 2.5px; padding-bottom: 5px; margin-bottom: 7px; }
+
+      .rhythm-panel { flex: unset; }
+      .arp-panel { min-width: unset; }
+      .speaker-panel { min-width: unset; }
+
+      .phys-btn { padding: 6px 12px; font-size: 0.65rem; }
+      .mode-btn { padding: 5px 8px; font-size: 0.58rem; }
+      .bpm-val { font-size: 0.75rem; }
+
+      /* Wrap arp mode buttons */
+      #arpModeBtns, #patternBtns { flex-wrap: wrap; gap: 5px; }
+
+      /* Compact speaker */
+      .speaker-grille { grid-template-columns: repeat(8, 6px); gap: 3px; padding: 5px; }
+      .gd { width: 6px; height: 6px; }
     }
   </style>
 </head>
@@ -771,13 +920,16 @@
         </div>
       </div>
       <div class="panel-row">
+        <div class="knob-group">
+          <div class="knob-label">Speed</div>
+          <input type="range" id="arpSpeedCtrl" min="0" max="100" value="50">
+        </div>
+        <span class="arp-sync-badge" id="arpSyncBadge">FREE</span>
+      </div>
+      <div class="panel-row">
         <div class="knob-label" style="color:#444;font-size:0.5rem;width:100%;margin-bottom:3px">Mode</div>
       </div>
       <div class="panel-row" id="arpModeBtns"></div>
-      <div class="panel-row" style="margin-top:4px">
-        <div class="knob-label" style="color:#444;font-size:0.5rem;width:100%;margin-bottom:3px">Subdivision (synced to BPM)</div>
-      </div>
-      <div class="panel-row" id="arpSubdivBtns"></div>
     </div>
 
     <!-- Speaker -->
@@ -1058,14 +1210,18 @@ const ARP_MODES = {
   },
 };
 
-// Subdivision options: label → 16th-note multiplier
-const ARP_SUBDIVS = {
-  '1/16': 1,
-  '1/8' : 2,
-  '1/4' : 4,
-  '1/2' : 8,
-  '1'   : 16,
-};
+// ── Arp speed helpers ──
+// Slider 0-100 → 16th-note step count (synced) or ms interval (free)
+function getSubdivSteps() {
+  const val = parseInt(document.getElementById('arpSpeedCtrl').value);
+  // 0→16 steps (whole), 25→8 (½), 50→4 (¼), 75→2 (⅛), 100→1 (1/16)
+  return Math.max(1, Math.round(Math.pow(2, (1 - val / 100) * 4)));
+}
+function getArpFreeMs() {
+  const val = parseInt(document.getElementById('arpSpeedCtrl').value);
+  // Exponential: 0→900ms (slow), 50→220ms, 100→60ms (fast)
+  return Math.round(900 * Math.pow(60 / 900, val / 100));
+}
 
 // ═══════════════════════════════════════════════════════════
 //  MASTER SCHEDULER  (rhythm + arpeggiator, perfectly synced)
@@ -1080,12 +1236,11 @@ let arpActive    = false;
 
 let currentPattern = 'Bossa Nova';
 let bpm = 104;
-let currentArpMode   = '↑ Up';
-let currentArpSubdiv = '1/8';
+let currentArpMode = '↑ Up';
 let arpState = { pos: -1, dir: 1, step: 0, phase: 0 };
+let arpFreeTimer = null;
 
 function getStepMs() { return (60000 / bpm) / 4; }        // 16th note in ms
-function getSubdivSteps() { return ARP_SUBDIVS[currentArpSubdiv] || 2; }
 
 function getNextArpPos() {
   const fn = ARP_MODES[currentArpMode];
@@ -1162,37 +1317,82 @@ function checkStopMaster() {
   }
 }
 
+// ── Sync badge ──
+function updateArpSyncBadge() {
+  const badge = document.getElementById('arpSyncBadge');
+  if (!badge) return;
+  if (arpActive && rhythmActive) {
+    badge.textContent = 'SYNC'; badge.classList.add('synced');
+  } else {
+    badge.textContent = 'FREE'; badge.classList.remove('synced');
+  }
+}
+
+// ── Free-running arp tick (used when rhythm is OFF) ──
+function tickArpFree() {
+  if (!arpActive || rhythmActive) return;  // hand off to master if rhythm started
+  if (selRoot !== null) {
+    const idx = getNextArpPos();
+    const midi = strumNotes[idx];
+    if (midi) {
+      const vel = parseInt(document.getElementById('arpVol').value) / 100;
+      pluckString(midi, 0.7 * vel);
+      animateString(idx);
+      robotEvent('strum');
+    }
+  }
+  arpFreeTimer = setTimeout(tickArpFree, getArpFreeMs());
+}
+
+function stopArpFree() {
+  if (arpFreeTimer) { clearTimeout(arpFreeTimer); arpFreeTimer = null; }
+}
+
 function startRhythm() {
   if (rhythmActive) return;
   rhythmActive = true;
-  masterStep = 0; // reset to beat 1
+  masterStep = 0;
   arpState = { pos: -1, dir: 1, step: 0, phase: 0 };
+  // If arp was free-running, stop it — master will drive it now
+  stopArpFree();
   ensureMaster();
+  updateArpSyncBadge();
 }
 
 function stopRhythm() {
   rhythmActive = false;
   checkStopMaster();
+  // If arp is still active, switch it to free-running
+  if (arpActive) {
+    arpState = { pos: -1, dir: 1, step: 0, phase: 0 };
+    tickArpFree();
+  }
+  updateArpSyncBadge();
 }
 
 function startArp() {
   if (arpActive) return;
   arpActive = true;
-  if (!rhythmActive) {
-    // If rhythm is not playing, reset step so arp starts from beat 1
-    masterStep = 0;
-    arpState = { pos: -1, dir: 1, step: 0, phase: 0 };
+  arpState = { pos: -1, dir: 1, step: 0, phase: 0 };
+  if (rhythmActive) {
+    // Sync: let master scheduler drive it
+    ensureMaster();
+  } else {
+    // Free-running: own timer
+    tickArpFree();
   }
-  ensureMaster();
   document.getElementById('autoStrumBtn').textContent = '⏹ ARP';
   document.getElementById('autoStrumBtn').classList.add('active');
+  updateArpSyncBadge();
 }
 
 function stopArp() {
   arpActive = false;
+  stopArpFree();
   checkStopMaster();
   document.getElementById('autoStrumBtn').textContent = '▶ ARP';
   document.getElementById('autoStrumBtn').classList.remove('active');
+  updateArpSyncBadge();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1447,22 +1647,6 @@ function buildArpModeButtons() {
   });
 }
 
-function buildArpSubdivButtons() {
-  const c=document.getElementById('arpSubdivBtns');
-  const labels={'1/16':'♬ 16th','1/8':'♪ 8th','1/4':'♩ ¼','1/2':'𝅗𝅥 ½','1':'● 1'};
-  Object.keys(ARP_SUBDIVS).forEach((name,i)=>{
-    const btn=document.createElement('button');
-    btn.className='mode-btn'+(name==='1/8'?' active':'');
-    btn.textContent=labels[name]||name;
-    btn.title=`${name} note — synced to BPM`;
-    btn.addEventListener('click',()=>{
-      document.querySelectorAll('#arpSubdivBtns .mode-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      currentArpSubdiv=name;
-    });
-    c.appendChild(btn);
-  });
-}
 
 // ═══════════════════════════════════════════════════════════
 //  CONTROLS
@@ -1558,7 +1742,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   buildStrumplate();
   buildPatternButtons();
   buildArpModeButtons();
-  buildArpSubdivButtons();
   initControls();
   setRobotState('sleep');
 });
