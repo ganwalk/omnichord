@@ -76,9 +76,9 @@
 
     /* ─── TOP PANEL ─── */
     .top-panel {
-      display: flex; align-items: center; gap: 14px;
+      display: flex; flex-direction: column; gap: 0;
       margin-bottom: 12px;
-      padding: 12px 14px;
+      padding: 12px 14px 10px;
       background:
         linear-gradient(180deg, #1e1e1e 0%, #161616 50%, #131313 100%);
       border-radius: 10px;
@@ -90,7 +90,11 @@
         inset 0 1px 0 rgba(255,255,255,0.06),
         inset 0 2px 8px rgba(0,0,0,0.6),
         0 2px 0 rgba(255,255,255,0.03);
-      flex-wrap: wrap;
+    }
+
+    .top-row-1 {
+      display: flex; align-items: center; gap: 14px;
+      padding-bottom: 10px;
     }
 
     /* Power section */
@@ -149,9 +153,9 @@
 
     /* Robot display */
     .robot-wrap {
-      flex: 0 0 auto;
+      flex: 1;
       display: flex; flex-direction: column; align-items: center; gap: 5px;
-      padding: 0 16px;
+      padding: 0 20px;
       border-left: 1px solid #222;
       border-right: 1px solid #222;
     }
@@ -159,18 +163,18 @@
     .robot-screen {
       background: #000d04;
       border: 2px solid #0d2010;
-      border-radius: 8px;
-      padding: 10px 16px 8px;
+      border-radius: 10px;
+      padding: 14px 28px 10px;
       box-shadow:
-        inset 0 0 30px rgba(0,50,0,0.7),
-        inset 0 2px 6px rgba(0,0,0,0.9),
-        0 0 12px rgba(0,80,0,0.3);
+        inset 0 0 40px rgba(0,50,0,0.8),
+        inset 0 2px 8px rgba(0,0,0,0.9),
+        0 0 18px rgba(0,80,0,0.35);
       font-family: 'Courier New', monospace;
       color: #00e060;
-      text-shadow: 0 0 7px #00e060, 0 0 14px rgba(0,224,96,0.4);
+      text-shadow: 0 0 9px #00e060, 0 0 18px rgba(0,224,96,0.45);
       text-align: center;
-      line-height: 1.3;
-      width: 152px;
+      line-height: 1.4;
+      width: 260px;
       flex-shrink: 0;
       position: relative;
     }
@@ -183,21 +187,21 @@
         0deg, transparent 0px, transparent 2px,
         rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 3px
       );
-      border-radius: 6px;
+      border-radius: 8px;
       pointer-events: none;
     }
 
     .robot-face-line {
-      font-size: 1.05rem; letter-spacing: 3px;
+      font-size: 1.5rem; letter-spacing: 4px;
       display: block;
       transition: all 0.1s;
     }
     .robot-status-line {
-      font-size: 0.52rem; letter-spacing: 2.5px;
-      color: rgba(0,224,96,0.55);
+      font-size: 0.62rem; letter-spacing: 3px;
+      color: rgba(0,224,96,0.6);
       display: block;
-      min-height: 0.75rem;
-      margin-top: 2px;
+      min-height: 0.85rem;
+      margin-top: 4px;
     }
     .robot-label { font-size: 0.44rem; letter-spacing: 2px; color: #1e2e1c; text-transform: uppercase; }
 
@@ -222,8 +226,13 @@
     }
     .led-label { font-size: 0.45rem; letter-spacing: 2px; color: #444; }
 
-    /* Top knob controls */
-    .top-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-left: auto; }
+    /* Top knob controls — second row, full width */
+    .top-controls {
+      display: flex; align-items: center; justify-content: space-evenly;
+      padding-top: 10px;
+      border-top: 1px solid #1a1a1a;
+      gap: 0;
+    }
 
     .knob-group { display: flex; flex-direction: column; align-items: center; gap: 3px; }
     .knob-label { font-size: 0.48rem; letter-spacing: 1.5px; text-transform: uppercase; color: #555; }
@@ -231,7 +240,7 @@
     /* ── Physical linear fader ── */
     input[type=range] {
       -webkit-appearance: none; appearance: none;
-      width: 80px; height: 6px; border-radius: 3px;
+      width: 100px; height: 6px; border-radius: 3px;
       background:
         linear-gradient(180deg, #080808 0%, #1c1c1c 40%, #141414 60%, #0a0a0a 100%);
       box-shadow:
@@ -660,13 +669,13 @@
     @media (max-width: 900px) {
       body { padding: 10px; }
 
-      .top-panel { gap: 10px; padding: 10px 12px; }
+      .top-panel { padding: 10px 12px 8px; }
       .brand-name { font-size: 1rem; letter-spacing: 3px; }
-      .robot-screen { width: 120px; padding: 8px 12px 6px; }
-      .robot-face-line { font-size: 0.9rem; }
+      .robot-screen { width: 200px; padding: 10px 18px 8px; }
+      .robot-face-line { font-size: 1.25rem; letter-spacing: 3px; }
       .led-display { width: 120px; font-size: 0.9rem; }
 
-      input[type=range] { width: 60px; }
+      input[type=range] { width: 70px; }
 
       .strum-section { width: 180px; }
       #strumplate { min-height: 240px; }
@@ -700,25 +709,19 @@
       .brand-name { font-size: 0.85rem; letter-spacing: 3px; }
       .brand-model { font-size: 0.4rem; letter-spacing: 1px; }
 
-      .robot-wrap { padding: 0 10px; }
-      .robot-screen { width: 104px; padding: 7px 10px 5px; }
-      .robot-face-line { font-size: 0.85rem; letter-spacing: 2px; }
+      .top-row-1 { gap: 8px; padding-bottom: 7px; }
+      .robot-wrap { padding: 0 8px; }
+      .robot-screen { width: 130px; padding: 8px 12px 6px; }
+      .robot-face-line { font-size: 1rem; letter-spacing: 2px; }
       .robot-status-line { font-size: 0.45rem; letter-spacing: 1.5px; }
 
-      .led-display { width: 104px; font-size: 0.85rem; letter-spacing: 2px; padding: 4px 10px; }
+      .led-display { width: 100px; font-size: 0.82rem; letter-spacing: 2px; padding: 4px 8px; }
 
-      /* Knobs: wrap tightly */
-      .top-controls {
-        width: 100%;
-        margin-left: 0;
-        justify-content: space-between;
-        gap: 6px;
-        padding-top: 4px;
-        border-top: 1px solid #1c1c1c;
-      }
+      /* Knobs: evenly across second row */
+      .top-controls { padding-top: 7px; justify-content: space-between; }
       .knob-group { gap: 2px; }
       .knob-label { font-size: 0.42rem; }
-      input[type=range] { width: 52px; height: 5px; }
+      input[type=range] { width: 48px; height: 5px; }
 
       /* ── Main area: stack vertically ── */
       .main-area { flex-direction: column; gap: 8px; }
@@ -798,35 +801,40 @@
   <!-- TOP PANEL -->
   <div class="top-panel">
 
-    <!-- Power -->
-    <div class="power-section">
-      <button class="power-btn" id="powerBtn" title="Power">⏻</button>
-      <div class="power-led" id="powerLed"></div>
-    </div>
+    <!-- Row 1: identity -->
+    <div class="top-row-1">
 
-    <!-- Brand -->
-    <div class="brand-block">
-      <div class="brand-suzuki">Suzuki</div>
-      <div class="brand-name">OMNICHORD</div>
-      <div class="brand-model">OM-84 SYSTEM TWO</div>
-    </div>
-
-    <!-- Robot face -->
-    <div class="robot-wrap">
-      <div class="robot-screen" id="robotScreen">
-        <span class="robot-face-line" id="robotFace">(·_·)</span>
-        <span class="robot-status-line" id="robotStatus">· · ·</span>
+      <!-- Power -->
+      <div class="power-section">
+        <button class="power-btn" id="powerBtn" title="Power">⏻</button>
+        <div class="power-led" id="powerLed"></div>
       </div>
-      <div class="robot-label">sys monitor</div>
-    </div>
 
-    <!-- LED display -->
-    <div class="led-block">
-      <div class="led-display" id="led">– – –</div>
-      <div class="led-label">chord display</div>
-    </div>
+      <!-- Brand -->
+      <div class="brand-block">
+        <div class="brand-suzuki">Suzuki</div>
+        <div class="brand-name">OMNICHORD</div>
+        <div class="brand-model">OM-84 SYSTEM TWO</div>
+      </div>
 
-    <!-- Knob controls -->
+      <!-- Robot face (centered, large) -->
+      <div class="robot-wrap">
+        <div class="robot-screen" id="robotScreen">
+          <span class="robot-face-line" id="robotFace">(·_·)</span>
+          <span class="robot-status-line" id="robotStatus">· · ·</span>
+        </div>
+        <div class="robot-label">sys monitor</div>
+      </div>
+
+      <!-- LED display -->
+      <div class="led-block">
+        <div class="led-display" id="led">– – –</div>
+        <div class="led-label">chord display</div>
+      </div>
+
+    </div><!-- /top-row-1 -->
+
+    <!-- Row 2: sliders -->
     <div class="top-controls">
       <div class="knob-group">
         <div class="knob-label">Master</div>
