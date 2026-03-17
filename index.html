@@ -142,37 +142,55 @@
     /* Robot display */
     .robot-wrap {
       flex: 0 0 auto;
-      display: flex; flex-direction: column; align-items: center; gap: 4px;
-      padding: 0 14px;
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      padding: 0 16px;
       border-left: 1px solid #222;
       border-right: 1px solid #222;
     }
 
     .robot-screen {
       background: #000d04;
-      border: 1px solid #0d2010;
-      border-radius: 5px;
-      padding: 5px 10px 4px;
-      box-shadow: inset 0 0 16px rgba(0,40,0,0.6), inset 0 2px 4px rgba(0,0,0,0.8);
+      border: 2px solid #0d2010;
+      border-radius: 8px;
+      padding: 10px 16px 8px;
+      box-shadow:
+        inset 0 0 30px rgba(0,50,0,0.7),
+        inset 0 2px 6px rgba(0,0,0,0.9),
+        0 0 12px rgba(0,80,0,0.3);
       font-family: 'Courier New', monospace;
       color: #00e060;
-      text-shadow: 0 0 5px #00e060, 0 0 10px rgba(0,224,96,0.3);
+      text-shadow: 0 0 7px #00e060, 0 0 14px rgba(0,224,96,0.4);
       text-align: center;
-      line-height: 1.25;
-      min-width: 90px;
+      line-height: 1.3;
+      min-width: 120px;
+      position: relative;
+    }
+
+    /* CRT scanline effect */
+    .robot-screen::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent 0px, transparent 2px,
+        rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 3px
+      );
+      border-radius: 6px;
+      pointer-events: none;
     }
 
     .robot-face-line {
-      font-size: 0.75rem; letter-spacing: 2px;
+      font-size: 1.05rem; letter-spacing: 3px;
       display: block;
+      transition: all 0.1s;
     }
     .robot-status-line {
-      font-size: 0.5rem; letter-spacing: 2px;
-      color: rgba(0,224,96,0.6);
+      font-size: 0.52rem; letter-spacing: 2.5px;
+      color: rgba(0,224,96,0.55);
       display: block;
-      min-height: 0.7rem;
+      min-height: 0.75rem;
+      margin-top: 2px;
     }
-    .robot-label { font-size: 0.45rem; letter-spacing: 2px; color: #2a3a28; text-transform: uppercase; }
+    .robot-label { font-size: 0.44rem; letter-spacing: 2px; color: #1e2e1c; text-transform: uppercase; }
 
     /* LED chord display */
     .led-block {
@@ -1017,28 +1035,25 @@ function tickMaster() {
         if (midi) {
           const arpVelGain = parseInt(document.getElementById('arpVol').value) / 100;
           pluckString(midi, 0.7 * arpVelGain, when);
-          // Visual animation offset by audio look-ahead
           const ms = Math.max(0, (when - AC.currentTime) * 1000);
           setTimeout(() => animateString(idx), ms);
-          if (globalStep % subdiv === 0 && rStep === undefined || true) {
-            setTimeout(() => robotEvent('strum'), ms);
-          }
+          setTimeout(() => robotEvent('strum'), ms);
         }
       }
     }
   }
 
   masterStep += LOOKAHEAD;
-
-  // Schedule next tick slightly before the lookahead window ends
   masterTimer = setTimeout(tickMaster, stepMs * LOOKAHEAD * 0.88);
 }
 
 function ensureMaster() {
-  if (!masterRunning && AC) {
+  // Start fresh, or recover if scheduler died (masterRunning stuck true but timer gone)
+  if ((!masterRunning || !masterTimer) && AC) {
     masterRunning = true;
     masterStep = 0;
     arpState = { pos: -1, dir: 1, step: 0, phase: 0 };
+    if (masterTimer) { clearTimeout(masterTimer); masterTimer = null; }
     tickMaster();
   }
 }
