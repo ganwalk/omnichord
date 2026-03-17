@@ -258,11 +258,14 @@
       border-radius: 8px; padding: 10px;
       border: 1px solid #0c0c0c;
       box-shadow: inset 0 2px 6px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.03);
+      display: flex; flex-direction: column;
     }
 
     .chord-grid {
+      flex: 1;
       display: grid;
       grid-template-columns: 44px repeat(12, 1fr);
+      grid-template-rows: auto repeat(6, 1fr);
       row-gap: 4px; column-gap: 2px;
     }
 
@@ -272,11 +275,12 @@
     .row-lbl {
       display: flex; align-items: center; justify-content: flex-end;
       padding-right: 6px; font-size: 0.58rem; font-weight: 700;
+      height: 100%;
     }
 
     /* ── CHORD BUTTONS ── */
     .chord-btn {
-      height: 34px; border-radius: 4px; cursor: pointer;
+      height: 100%; min-height: 28px; border-radius: 4px; cursor: pointer;
       font-size: 0.52rem; font-weight: 800; letter-spacing: 0.2px;
       display: flex; align-items: center; justify-content: center;
       position: relative; overflow: hidden;
