@@ -760,6 +760,12 @@
       /* Hide decorative corner screws on mobile */
       .screw { display: none; }
 
+      /* Hide chord LED display — shown in badge instead */
+      .led-block { display: none; }
+
+      /* Hide speaker panel on mobile */
+      .speaker-panel { display: none; }
+
       /* ── Top panel: wrap into 2 rows ── */
       .top-panel {
         gap: 8px;
@@ -780,15 +786,13 @@
       .robot-face-line { font-size: 1rem; letter-spacing: 2px; }
       .robot-status-line { font-size: 0.45rem; letter-spacing: 1.5px; }
 
-      .led-display { width: 100px; font-size: 0.82rem; letter-spacing: 2px; padding: 4px 8px; }
-
       /* Knobs: evenly across second row */
       .top-controls { padding-top: 7px; justify-content: space-between; }
       .knob-group { gap: 2px; }
       .knob-label { font-size: 0.42rem; }
       input[type=range] { width: 48px; height: 5px; }
 
-      /* ── Main area: stack vertically ── */
+      /* ── Main area: stack vertically (portrait default) ── */
       .main-area { flex-direction: column; gap: 8px; }
 
       /* Chord section fills width */
@@ -828,18 +832,16 @@
         flex: 1;
         min-height: unset;
         height: 100%;
-        /* On mobile strumplate strings run left-to-right naturally */
       }
       .frame-screw { display: none; }
 
-      /* ── Bottom panel ── */
+      /* ── Bottom panel: stack vertically (portrait default) ── */
       .bottom-panel { flex-direction: column; gap: 8px; }
       .panel-box { padding: 8px 10px; }
       .panel-title { font-size: 0.42rem; letter-spacing: 2.5px; padding-bottom: 5px; margin-bottom: 7px; }
 
       .rhythm-panel { flex: unset; }
       .arp-panel { min-width: unset; }
-      .speaker-panel { min-width: unset; }
 
       .phys-btn { padding: 6px 12px; font-size: 0.65rem; }
       .mode-btn { padding: 5px 8px; font-size: 0.58rem; }
@@ -847,10 +849,39 @@
 
       /* Wrap arp mode buttons */
       #arpModeBtns, #patternBtns { flex-wrap: wrap; gap: 5px; }
+    }
 
-      /* Compact speaker */
-      .speaker-grille { grid-template-columns: repeat(8, 6px); gap: 3px; padding: 5px; }
-      .gd { width: 6px; height: 6px; }
+    /* ─── MOBILE LANDSCAPE ─── */
+    @media (max-width: 640px) and (orientation: landscape) {
+      body { padding: 4px; }
+
+      .instrument { padding: 6px 8px 10px; }
+
+      /* Main area: side by side in landscape */
+      .main-area { flex-direction: row; gap: 8px; }
+
+      .strum-section {
+        width: 130px;
+        flex-direction: column;
+        height: auto;
+        flex-shrink: 0;
+      }
+      .chord-name-badge {
+        width: 100%;
+        flex-direction: row;
+        justify-content: center;
+        height: 36px;
+      }
+      .strum-frame { flex: 1; }
+      #strumplate { min-height: 100px; height: 100%; }
+
+      /* Bottom panel: side by side in landscape */
+      .bottom-panel { flex-direction: row; flex-wrap: nowrap; align-items: flex-start; gap: 6px; }
+      .rhythm-panel { flex: 1; min-width: 0; }
+      .arp-panel    { flex: 1; min-width: 0; }
+
+      /* Compact sliders in landscape */
+      input[type=range] { width: 56px; }
     }
   </style>
 </head>
