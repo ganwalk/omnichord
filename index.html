@@ -646,6 +646,27 @@
       filter: brightness(0.3);
     }
 
+    /* Arp panel internal layout */
+    .arp-divider {
+      width: 1px; align-self: stretch;
+      background: linear-gradient(180deg, transparent, #2a2a2a 30%, #2a2a2a 70%, transparent);
+      flex-shrink: 0;
+    }
+    .arp-mode-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 8px;
+      padding-top: 7px;
+      border-top: 1px solid #1a1a1a;
+    }
+    .arp-mode-label {
+      font-size: 0.46rem; letter-spacing: 2px; text-transform: uppercase;
+      color: #383838; white-space: nowrap;
+      writing-mode: initial;
+    }
+    .arp-mode-btns {
+      display: flex; gap: 4px; flex-wrap: wrap;
+    }
+
     /* Arp sync status badge */
     .arp-sync-badge {
       font-size: 0.48rem; font-weight: 800; letter-spacing: 2px;
@@ -920,24 +941,27 @@
     <!-- Arpeggiator -->
     <div class="panel-box arp-panel">
       <div class="panel-title">Auto Strum / Arpeggiator</div>
-      <div class="panel-row">
+
+      <!-- Controls row: button | speed | vol | badge -->
+      <div class="panel-row" style="gap:14px;align-items:center;">
         <button class="phys-btn" id="autoStrumBtn">▶ ARP</button>
-        <div class="knob-group">
-          <div class="knob-label">Arp Vol</div>
-          <input type="range" id="arpVol" min="0" max="100" value="75">
-        </div>
-      </div>
-      <div class="panel-row">
+        <div class="arp-divider"></div>
         <div class="knob-group">
           <div class="knob-label">Speed</div>
           <input type="range" id="arpSpeedCtrl" min="0" max="100" value="50">
         </div>
+        <div class="knob-group">
+          <div class="knob-label">Vol</div>
+          <input type="range" id="arpVol" min="0" max="100" value="75">
+        </div>
         <span class="arp-sync-badge" id="arpSyncBadge">FREE</span>
       </div>
-      <div class="panel-row">
-        <div class="knob-label" style="color:#444;font-size:0.5rem;width:100%;margin-bottom:3px">Mode</div>
+
+      <!-- Mode label + buttons -->
+      <div class="arp-mode-row">
+        <div class="arp-mode-label">Mode</div>
+        <div class="arp-mode-btns" id="arpModeBtns"></div>
       </div>
-      <div class="panel-row" id="arpModeBtns"></div>
     </div>
 
     <!-- Speaker -->
