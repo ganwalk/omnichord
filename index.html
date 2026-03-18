@@ -14,10 +14,22 @@
     body {
       background: radial-gradient(ellipse at 50% 0%, #2a2010 0%, #0e0a06 100%);
       min-height: 100vh;
-      display: flex; align-items: center; justify-content: center;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
       padding: 20px;
       font-family: system-ui, -apple-system, sans-serif;
     }
+
+    .credits {
+      margin-top: 12px;
+      font-size: 0.62rem; letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.15);
+    }
+    .credits a {
+      color: rgba(255,255,255,0.25);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .credits a:hover { color: rgba(255,255,255,0.55); }
 
     /* ─── INSTRUMENT BODY ─── */
     .instrument {
@@ -1012,6 +1024,8 @@
 
   </div>
 </div><!-- /instrument -->
+
+<p class="credits">Desenvolvido por <a href="https://ganwalk.github.io/2026/" target="_blank" rel="noopener">Ganwalk</a></p>
 
 <script>
 // ═══════════════════════════════════════════════════════════
