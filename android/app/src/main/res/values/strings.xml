@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Omnichord OM-84</string>
+    <string name="title_activity_main">Omnichord OM-84</string>
+    <string name="package_name">com.ganwalk.omnichord</string>
+    <string name="custom_url_scheme">com.ganwalk.omnichord</string>
+</resources>

@@ -1,0 +1,21 @@
+{
+  "appId": "com.ganwalk.omnichord",
+  "appName": "Omnichord OM-84",
+  "webDir": "www",
+  "backgroundColor": "#0e0a06",
+  "android": {
+    "backgroundColor": "#0e0a06"
+  },
+  "ios": {
+    "backgroundColor": "#0e0a06",
+    "contentInset": "always"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#0e0a06",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    }
+  }
+}
