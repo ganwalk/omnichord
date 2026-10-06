@@ -41,7 +41,19 @@ html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; 
   background: linear-gradient(145deg, #3a3a3e, #0c0c0e 30%, #050506 70%, #2a2a2e);
   box-shadow: 0 40px 90px rgba(0,0,0,0.75), 0 0 0 2px #000, inset 0 0 0 2px rgba(255,255,255,0.08);
 }
-.screen { position: absolute; overflow: hidden; background: #000; }
+/* Screens show the app edge to edge; the system strips use the instrument's metal. */
+.screen, .land-holder {
+  position: absolute; overflow: hidden;
+  background: linear-gradient(160deg, #2e2e2e 0%, #1c1c1c 35%, #252525 65%, #1a1a1a 100%);
+}
+.statusbar {
+  position: absolute; left: 0; top: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: 'Inter', sans-serif; font-weight: 600; color: #fff; letter-spacing: 0.01em;
+}
+.statusbar .icons { display: flex; align-items: center; gap: 6px; }
+.statusbar svg { fill: currentColor; display: block; }
+.homebar { position: absolute; z-index: 2; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.85); }
 .screen iframe { position: absolute; left: 0; top: 0; border: 0; display: block; transform-origin: 0 0; }
 .phone .bezel { border-radius: 64px; }
 .phone .screen { border-radius: 48px; }

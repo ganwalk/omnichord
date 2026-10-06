@@ -113,13 +113,16 @@ class AppView {
   private lastChord: ChordEv | null | undefined = undefined;
   private lastHeld: ChordEv | null | undefined = undefined;
 
-  constructor(parent: HTMLElement, readonly w: number, readonly h: number) {
+  /** The app fills a w×h viewport placed at (ox, oy) inside `parent` (below the status bar etc.). */
+  constructor(parent: HTMLElement, readonly w: number, readonly h: number, readonly ox = 0, readonly oy = 0) {
     this.iframe = el('iframe', '', parent);
     this.iframe.width = String(w);
     this.iframe.height = String(h);
-    this.iframe.style.width = `${w}px`;
-    this.iframe.style.height = `${h}px`;
+    Object.assign(this.iframe.style, { width: `${w}px`, height: `${h}px`, left: `${ox}px`, top: `${oy}px` });
   }
+
+  /** App point → point in the parent element. */
+  toParent(x: number, y: number): [number, number] { return [x + this.ox, y + this.oy]; }
 
   async load(): Promise<void> {
     await new Promise<void>(resolve => { this.iframe.addEventListener('load', () => resolve(), { once: true }); this.iframe.src = '/'; });
@@ -271,20 +274,50 @@ class Device {
 
 // Hero phone: portrait app, plus a landscape app pre-rotated inside the screen,
 // revealed when the phone turns sideways.
+// System areas a real device reserves (iPhone-style): the app runs between them,
+// edge to edge, like it does on a phone.
+const PHONE_PORTRAIT = { top: 47, bottom: 34 };
+const PHONE_LANDSCAPE = { side: 47, bottom: 21 };
+const TABLET = { top: 24, bottom: 20 };
+
+const SIGNAL = '<svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>';
+const WIFI = '<svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0z"/><path d="M3.4 6.9a6.5 6.5 0 0 1 9.2 0l-1.4 1.4a4.5 4.5 0 0 0-6.4 0z"/><path d="M1.1 4.6a9.8 9.8 0 0 1 13.8 0l-1.4 1.4a7.8 7.8 0 0 0-11 0z"/></svg>';
+const BATTERY = '<svg width="27" height="13" viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2.5" y="2.5" width="16" height="8" rx="2"/><path d="M25 4.5v4a2 2 0 0 0 0-4z" opacity=".45"/></svg>';
+
+function statusBar(parent: HTMLElement, width: number, height: number, size: number): void {
+  const bar = el('div', 'statusbar', parent);
+  Object.assign(bar.style, { width: `${width}px`, height: `${height}px`, fontSize: `${size}px`, padding: `0 ${size * 1.9}px` });
+  el('span', 'clock', bar).textContent = '9:41';
+  el('span', 'icons', bar).innerHTML = SIGNAL + WIFI + BATTERY;
+}
+function homeBar(parent: HTMLElement, cx: number, bottom: number, width: number): void {
+  const bar = el('div', 'homebar', parent);
+  Object.assign(bar.style, { left: `${cx - width / 2}px`, bottom: `${bottom}px`, width: `${width}px` });
+}
+
 const hero = new Device('phone', 390, 844);
-const heroPortrait = new AppView(hero.screen, 390, 844);
+// Portrait app + its status bar fade out together when the phone turns (iOS hides it sideways).
+const portraitLayer = el('div', 'layer', hero.screen);
+statusBar(portraitLayer, 390, PHONE_PORTRAIT.top, 16);
+homeBar(portraitLayer, 195, 9, 134);
+const heroPortrait = new AppView(portraitLayer, 390, 844 - PHONE_PORTRAIT.top - PHONE_PORTRAIT.bottom, 0, PHONE_PORTRAIT.top);
 const landHolder = el('div', 'land-holder', hero.screen);
 Object.assign(landHolder.style, { width: '844px', height: '390px', transform: 'translate(390px, 0) rotate(90deg)' });
-const heroLandscape = new AppView(landHolder, 844, 390);
+homeBar(landHolder, 422, 7, 160);
+const heroLandscape = new AppView(landHolder, 844 - 2 * PHONE_LANDSCAPE.side, 390 - PHONE_LANDSCAPE.bottom, PHONE_LANDSCAPE.side, 0);
 /** Landscape app point → hero screen point. */
 const landToScreen = (x: number, y: number): [number, number] => [390 - y, x];
 
 const tablet = new Device('tablet', 820, 1180);
-const tabletApp = new AppView(tablet.screen, 820, 1180);
+statusBar(tablet.screen, 820, TABLET.top, 13);
+homeBar(tablet.screen, 410, 7, 260);
+const tabletApp = new AppView(tablet.screen, 820, 1180 - TABLET.top - TABLET.bottom, 0, TABLET.top);
 const laptop = new Device('laptop', 1440, 900);
 const laptopApp = new AppView(laptop.screen, 1440, 900);
 const phone2 = new Device('phone', 390, 844);
-const phone2App = new AppView(phone2.screen, 390, 844);
+statusBar(phone2.screen, 390, PHONE_PORTRAIT.top, 16);
+homeBar(phone2.screen, 195, 9, 134);
+const phone2App = new AppView(phone2.screen, 390, 844 - PHONE_PORTRAIT.top - PHONE_PORTRAIT.bottom, 0, PHONE_PORTRAIT.top);
 
 // ═══ Typography ═══
 
@@ -485,7 +518,7 @@ function renderFrame(t: number): void {
   hero.place(pose.cx, pose.cy, pose.s, pose.rot, pose.op);
   if (pose.op > 0) {
     const landP = prog(t, T.rhythmOn + 0.3, 0.15);
-    heroPortrait.iframe.style.opacity = String(1 - landP);
+    portraitLayer.style.opacity = String(1 - landP);
     landHolder.style.opacity = String(landP);
     if (landP < 1) heroPortrait.apply(state);
     if (landP > 0) heroLandscape.apply(state);
@@ -498,7 +531,9 @@ function renderFrame(t: number): void {
   swipeDot.style.opacity = '0';
   if (upright || sideways) {
     const view = upright ? heroPortrait : heroLandscape;
-    const map = (x: number, y: number) => (upright ? hero.toStage(x, y) : hero.toStage(...landToScreen(x, y)));
+    const map = (x: number, y: number) => (upright
+      ? hero.toStage(...heroPortrait.toParent(x, y))
+      : hero.toStage(...landToScreen(...heroLandscape.toParent(x, y))));
     const c = chords.find(ch => t >= ch.t - 0.35 && t < ch.t + 0.3);
     if (c) {
       const r = view.rect(view.chordButton(c));
@@ -589,7 +624,8 @@ async function init(): Promise<void> {
   await Promise.all([heroPortrait, heroLandscape, tabletApp, laptopApp, phone2App].map(v => v.load()));
   await document.fonts.ready;
   const btn = heroPortrait.rect('#powerBtn');
-  powerPt = { x: hero.bezel + btn.x + btn.width / 2, y: hero.bezel + btn.y + btn.height / 2 };
+  const [bx, by] = heroPortrait.toParent(btn.x + btn.width / 2, btn.y + btn.height / 2);
+  powerPt = { x: hero.bezel + bx, y: hero.bezel + by };
   for (const h of [h1, h3, h4, h5, h7]) h.fit();
   const fitWidth = (e: HTMLElement, start: number, max: number) => {
     let size = start;

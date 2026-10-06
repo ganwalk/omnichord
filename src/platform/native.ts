@@ -20,5 +20,5 @@ export async function setupNativeChrome(): Promise<void> {
   if (!isNative) return;
   const { StatusBar, Style } = await import('@capacitor/status-bar');
   await StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
-  if (Capacitor.getPlatform() === 'android') await StatusBar.setBackgroundColor({ color: '#0e0a06' }).catch(() => {});
+  if (Capacitor.getPlatform() === 'android') await StatusBar.setBackgroundColor({ color: '#1e1e1e' }).catch(() => {});
 }
