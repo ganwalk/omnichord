@@ -51,9 +51,9 @@ h2 { font-weight: inherit; }
   flex: 1 1 auto;
   max-height: 940px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto auto minmax(300px, 1fr) auto;
-  grid-template-areas: "top" "mixer" "main" "bottom";
+  grid-template-areas: "top tools" "mixer mixer" "main main" "bottom bottom";
   background:
     radial-gradient(ellipse at 20% 10%, rgba(255,255,255,0.04) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 90%, rgba(0,0,0,0.3) 0%, transparent 50%),
@@ -107,7 +107,7 @@ h2 { font-weight: inherit; }
 }
 
 /* ─── TOP PANEL + MIXER (one recessed panel, split in two rows) ─── */
-.top-panel, .mixer-panel {
+.top-panel, .mixer-panel, .tools-panel {
   background: linear-gradient(180deg, #1e1e1e 0%, #161616 50%, #131313 100%);
   border-left: 1px solid rgba(255,255,255,0.04);
   border-right: 1px solid #0a0a0a;
@@ -116,7 +116,7 @@ h2 { font-weight: inherit; }
   grid-area: top;
   display: flex; align-items: center; gap: 14px;
   padding: 12px 14px 10px;
-  border-radius: 10px 10px 0 0;
+  border-radius: 10px 0 0 0;
   border-top: 1px solid rgba(255,255,255,0.07);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 2px 8px rgba(0,0,0,0.6);
 }
@@ -270,6 +270,65 @@ h2 { font-weight: inherit; }
   box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
 }
 .led-label { font-size: 0.6875rem; letter-spacing: 2px; color: #7a7a7a; }
+
+/* ─── TOOLS: key highlight, recording, MIDI (top-right on wide screens) ─── */
+.tools-panel {
+  grid-area: tools;
+  display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  padding: 8px 14px;
+  border-radius: 0 10px 0 0;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  border-left: 1px solid #222;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 2px 8px rgba(0,0,0,0.6);
+}
+.tool-row { display: flex; align-items: center; gap: 8px; }
+.tool-btn { padding: 5px 12px; font-size: 0.75rem; flex: 1 1 0; }
+.tool-btn.recording { background: linear-gradient(180deg, #8a1c1c 0%, #6a1010 60%, #4a0808 100%); color: #ffd0d0; animation: recPulse 1.2s ease-in-out infinite; }
+.tool-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.tool-status { font-size: 0.6875rem; color: #8a8a8a; max-width: 190px; }
+.tool-status:empty { display: none; }
+.key-select {
+  flex: 1;
+  -webkit-appearance: none; appearance: none;
+  background: #0a0a0a; color: #e0c060;
+  border: 1px solid #000; border-radius: 4px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+  padding: 5px 24px 5px 8px;
+  font: 700 0.8125rem system-ui, sans-serif;
+  background-image: linear-gradient(45deg, transparent 50%, #8a8a8a 50%), linear-gradient(135deg, #8a8a8a 50%, transparent 50%);
+  background-position: calc(100% - 13px) 50%, calc(100% - 8px) 50%;
+  background-size: 5px 5px; background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+/* Recording indicator, visible even when the controls sheet is closed */
+.rec-dot {
+  display: none;
+  position: absolute; top: -8px; left: -6px; z-index: 5;
+  padding: 1px 6px; border-radius: 8px;
+  background: #3a0606; color: #ff5050;
+  font-size: 0.6875rem; font-weight: 800; letter-spacing: 1px; white-space: nowrap;
+  pointer-events: none;
+  animation: recPulse 1.2s ease-in-out infinite;
+}
+.instrument.recording .rec-dot { display: block; }
+@keyframes recPulse { 50% { opacity: 0.55; } }
+
+/* Toast messages */
+.toast {
+  position: fixed; z-index: 200;
+  left: 50%; bottom: max(20px, env(safe-area-inset-bottom));
+  transform: translate(-50%, 8px);
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px 16px; border-radius: 8px;
+  background: rgba(24,24,24,0.96); color: #ddd;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  font-size: 0.8125rem; text-align: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 /* Quick controls: only in compact layouts */
 .quickbar { display: none; }
@@ -433,6 +492,11 @@ input[type=range]::-moz-range-thumb {
   background: rgba(255,220,80,0.08);
   border-radius: 3px;
 }
+
+/* Key highlight: chords outside the chosen key fade back */
+.chord-grid.key-active .chord-btn:not(.in-key) { opacity: 0.38; }
+.chord-grid.key-active .chord-btn.selected,
+.chord-grid.key-active .chord-btn.held { opacity: 1; }
 
 .kb-hint { font-size: 0.6875rem; color: #6a6a6a; text-align: center; margin-top: 6px; }
 @media (hover: none) { .kb-hint { display: none; } }
@@ -727,7 +791,7 @@ input[type=range]::-moz-range-thumb {
   .robot-wrap { padding: 0 10px; }
   .robot-screen { width: 190px; padding: 10px 14px 6px; }
   .robot-face-line { font-size: 1.2rem; letter-spacing: 3px; }
-  .led-display { width: 112px; font-size: 0.95rem; }
+  .led-block { display: none; }
   input[type=range] { width: 84px; }
   .chord-grid { grid-template-columns: 42px repeat(12, minmax(0, 1fr)); column-gap: 2px; }
   .chord-btn { font-size: 0.6875rem; }
@@ -741,6 +805,7 @@ input[type=range]::-moz-range-thumb {
   .credits { margin-top: 4px; }
   .instrument { padding: 12px 14px 18px; grid-template-rows: auto auto minmax(240px, 1fr) auto; }
   .top-panel { padding: 8px 14px 6px; }
+  .tools-panel { padding: 6px 12px; gap: 4px; }
   .robot-screen { padding: 6px 20px; }
   .robot-face-line { font-size: 1.2rem; }
   .robot-status-line, .robot-label, .kb-hint { display: none; }
@@ -764,6 +829,7 @@ input[type=range]::-moz-range-thumb {
 
   .instrument {
     max-height: none;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas: "top" "main";
     border-radius: 14px;
@@ -826,6 +892,18 @@ input[type=range]::-moz-range-thumb {
     transition: opacity 0.25s;
   }
   .instrument.sheet-open ~ .sheet-backdrop { opacity: 1; pointer-events: auto; }
+
+  .tools-panel {
+    order: 1;
+    border-radius: 8px; border-left: 1px solid rgba(255,255,255,0.04);
+    padding: 10px 12px; gap: 8px;
+  }
+  .tool-btn { min-height: 44px; }
+  .key-select { min-height: 40px; }
+  .tool-status { max-width: none; }
+  .sheet-header { order: 0; }
+  .mixer-panel { order: 2; }
+  .bottom-panel { order: 3; }
 
   .mixer-panel {
     margin: 0; border-radius: 8px;
@@ -928,7 +1006,7 @@ input[type=range]::-moz-range-thumb {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .power-tooltip { animation: none; }
+  .power-tooltip, .rec-dot, .tool-btn.recording { animation: none; }
   .s-string.plucked::after { animation: none; }
   .controls { transition: none !important; }
 }

@@ -6,6 +6,13 @@
   <meta name="theme-color" content="#0e0a06">
   <meta name="description" content="OmniSound — chord synthesizer with strumplate, rhythm machine and arpeggiator.">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="OmniSound">
   <title>OmniSound</title>
 </head>
 <body>
@@ -19,9 +26,10 @@
   <!-- TOP PANEL: identity + (compact layouts) quick controls -->
   <header class="top-panel">
     <div class="power-section">
-      <button type="button" class="power-btn" id="powerBtn" title="Power" aria-label="Power" aria-pressed="false">⏻</button>
+      <button type="button" class="power-btn" id="powerBtn" data-i18n-title="power" data-i18n-aria="power" aria-pressed="false">⏻</button>
       <div class="power-led" id="powerLed"></div>
-      <div class="power-tooltip" id="powerTooltip">pressione para ligar</div>
+      <div class="power-tooltip" id="powerTooltip" data-i18n="powerHint"></div>
+      <div class="rec-dot" aria-hidden="true">● REC</div>
     </div>
 
     <div class="brand-block">
@@ -43,11 +51,11 @@
       <div class="led-label">chord display</div>
     </div>
 
-    <nav class="quickbar" aria-label="Quick controls">
+    <nav class="quickbar" data-i18n-aria="quickControls">
       <button type="button" class="phys-btn" data-action="rhythm">▶ PLAY</button>
       <button type="button" class="phys-btn" data-action="arp">▶ ARP</button>
       <button type="button" class="phys-btn" data-action="page" id="pageBtn">⇅ EXT</button>
-      <button type="button" class="phys-btn quick-icon" data-action="sheet" aria-label="Controls" aria-controls="controls" aria-expanded="false">⚙</button>
+      <button type="button" class="phys-btn quick-icon" data-action="sheet" data-i18n-aria="openControls" aria-controls="controls" aria-expanded="false">⚙</button>
     </nav>
   </header>
 
@@ -59,7 +67,7 @@
     </div>
 
     <div class="strum-section">
-      <button type="button" class="chord-name-badge" id="chordBadge" title="Silence (Esc)" aria-label="Silence chord">
+      <button type="button" class="chord-name-badge" id="chordBadge" data-i18n-title="silenceTitle" data-i18n-aria="silence">
         <span class="chord-label">
           <span class="chord-root" id="chordRoot">–</span>
           <span class="chord-sym"  id="chordSym"></span>
@@ -78,10 +86,22 @@
   </main>
 
   <!-- CONTROLS: laid out inline on wide screens, a slide-in sheet on phones -->
-  <div class="controls" id="controls" aria-label="Controls">
+  <div class="controls" id="controls" data-i18n-aria="controls">
     <div class="sheet-header">
-      <span class="sheet-title">Controls</span>
-      <button type="button" class="phys-btn quick-icon" data-action="sheet" aria-label="Close controls">✕</button>
+      <span class="sheet-title" data-i18n="controls"></span>
+      <button type="button" class="phys-btn quick-icon" data-action="sheet" data-i18n-aria="closeControls">✕</button>
+    </div>
+
+    <div class="tools-panel">
+      <label class="tool-row">
+        <span class="knob-label" data-i18n="keyLabel"></span>
+        <select id="keySelect" class="key-select"></select>
+      </label>
+      <div class="tool-row">
+        <button type="button" class="phys-btn tool-btn" id="recBtn" data-action="record"></button>
+        <button type="button" class="phys-btn tool-btn" id="midiBtn" data-action="midi">MIDI</button>
+      </div>
+      <div class="tool-status" id="midiStatus" aria-live="polite"></div>
     </div>
 
     <div class="mixer-panel">
@@ -166,7 +186,9 @@
 
 <div class="sheet-backdrop" data-action="sheet"></div>
 
-<p class="credits">Desenvolvido por <a href="https://ganwalk.github.io/2026/" target="_blank" rel="noopener">Ganwalk</a></p>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<p class="credits"><span data-i18n="credits"></span> <a href="https://ganwalk.github.io/2026/" target="_blank" rel="noopener">Ganwalk</a></p>
 
 <script type="module" src="/src/main.ts"></script>
 </body>

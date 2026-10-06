@@ -29,6 +29,7 @@ export class AudioEngine {
   private _ctx: AudioContext | null = null;
   private graph: Graph | null = null;
   private _noise: AudioBuffer | null = null;
+  private recordTap: MediaStreamAudioDestinationNode | null = null;
 
   get ctx(): AudioContext {
     if (!this._ctx) throw new Error('AudioEngine used before boot()');
@@ -95,6 +96,16 @@ export class AudioEngine {
     set(gr.tone.frequency, toneToCutoff(s.tone));
     set(gr.dry.gain, dry);
     set(gr.wet.gain, wet);
+  }
+
+  /** Stream of the master output, for recording. */
+  recordingStream(): MediaStream {
+    if (!this.graph || !this._ctx) throw new Error('AudioEngine used before boot()');
+    if (!this.recordTap) {
+      this.recordTap = this._ctx.createMediaStreamDestination();
+      this.graph.master.connect(this.recordTap);
+    }
+    return this.recordTap.stream;
   }
 
   async resume(): Promise<void> {

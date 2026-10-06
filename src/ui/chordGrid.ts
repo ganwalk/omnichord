@@ -4,7 +4,7 @@
 // lay the same elements out as 6×12 (wide), 3×12 paged (phone landscape) or
 // 12×3 transposed (phone portrait).
 
-import { ACCIDENTALS, CHORD_TYPES, NOTE_NAMES, chordName, type ChordType } from '../theory';
+import { ACCIDENTALS, CHORD_TYPES, NOTE_NAMES, chordKey, chordName, type ChordType } from '../theory';
 
 export type ChordPressHandler = (root: number, type: ChordType) => void;
 
@@ -64,7 +64,7 @@ export class ChordGrid {
         // Keyboard activation (Enter on a focused button) arrives as a click with detail 0.
         btn.addEventListener('click', e => { if (e.detail === 0) onPress(root, type); });
 
-        this.buttons.set(key(root, type), btn);
+        this.buttons.set(chordKey(root, type), btn);
         grid.appendChild(btn);
       }
     });
@@ -78,14 +78,18 @@ export class ChordGrid {
     this.grid.dataset.page = String(this._page);
   }
 
+  /** Fade chords outside `inKey` (a set of chordKey()s); null shows all. */
+  setKeyHighlight(inKey: Set<string> | null): void {
+    this.grid.classList.toggle('key-active', inKey !== null);
+    for (const [k, btn] of this.buttons) btn.classList.toggle('in-key', inKey?.has(k) ?? false);
+  }
+
   setSelected(root: number | null, type: ChordType | null): void {
     for (const b of this.buttons.values()) b.classList.remove('selected');
-    if (root !== null && type) this.buttons.get(key(root, type))?.classList.add('selected');
+    if (root !== null && type) this.buttons.get(chordKey(root, type))?.classList.add('selected');
   }
 }
 
 /** Page holding a chord type. */
 export const pageOf = (type: ChordType): number =>
   Math.floor(CHORD_TYPES.indexOf(type) / ROWS_PER_PAGE);
-
-const key = (root: number, type: ChordType): string => `${type.id}:${root}`;

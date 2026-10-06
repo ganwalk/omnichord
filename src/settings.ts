@@ -16,6 +16,8 @@ export interface Settings {
   octave: -1 | 0 | 1;
   pattern: string;
   arpMode: string;
+  /** Highlighted key (root of the major key, 0–11), or null for none. */
+  key: number | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -31,6 +33,7 @@ export const DEFAULT_SETTINGS: Settings = {
   octave: 0,
   pattern: PATTERNS[0].name,
   arpMode: ARP_MODE_NAMES[0],
+  key: null,
 };
 
 export const BPM_MIN = 40;

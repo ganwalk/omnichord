@@ -2,7 +2,19 @@
 
 Sintetizador de acordes inspirado em autoharps eletrônicos dos anos 80: grade de
 acordes, *strumplate* de 24 cordas, bateria eletrônica e arpejador. Roda no
-navegador (desktop e celular), sem dependências em tempo de execução.
+navegador (desktop e celular), pode ser instalado como app (PWA, funciona
+offline) e empacotado como app nativo Android/iOS com Capacitor.
+
+## Recursos
+
+- 72 acordes (maior, menor, 7, m7, Maj7, °7) e strumplate de 4 oitavas
+- 7 ritmos e arpejador com 7 modos, sincronizados no mesmo relógio
+- **Tom**: destaca os acordes do campo harmônico escolhido
+- **REC**: grava o que você toca e baixa/compartilha o áudio (WebM ou M4A)
+- **MIDI**: toque um acorde num teclado MIDI e o OmniSound acompanha
+  (Chrome/Edge/Android; o Safari não suporta Web MIDI)
+- Configurações salvas no aparelho; interface em português ou inglês
+  conforme o idioma do sistema; tela não apaga enquanto o instrumento está ligado
 
 ## Layouts
 
@@ -27,10 +39,27 @@ npm run preview    # serve o build de dist/
 
 ## Deploy (Vercel)
 
-O Vercel detecta o projeto como **Vite** automaticamente:
+O `vercel.json` já define build (`npm run build`), saída (`dist`) e os
+cabeçalhos de cache (o `sw.js` nunca fica em cache; `assets/` é imutável).
+Basta importar o repositório no Vercel.
 
-- Build command: `npm run build`
-- Output directory: `dist`
+O service worker é gerado no build (`src/sw.js` → `dist/sw.js`) com a lista
+exata de arquivos; cada deploy cria um cache novo e apaga o anterior.
+
+## Apps nativos (Capacitor)
+
+Os projetos `android/` e `ios/` já estão no repositório, com ícones, splash,
+tela sempre acesa e (iOS) áudio tocando mesmo com a chave de silencioso.
+
+```bash
+npm run cap:android   # build + sync + abre no Android Studio
+npm run cap:ios       # build + sync + abre no Xcode (requer macOS)
+```
+
+Depois de mudar o código web, rode `npm run cap:sync` antes de compilar o app.
+Para trocar o ícone: edite `scripts/icon.svg`, rode `npm run icons` (PWA) e
+`node scripts/gen-native-assets.cjs && npx @capacitor/assets generate --ios --android`
+(nativos). Ambos os scripts usam o Playwright.
 
 ## Estrutura
 
@@ -46,7 +75,13 @@ src/
   audio/engine.ts       AudioContext, mixer, reverb, ciclo de vida
   audio/instruments.ts  acorde sustentado, corda dedilhada, bateria
   ui/                   grade de acordes, strumplate, teclado, robô
+  i18n.ts               textos pt-BR / en
+  storage.ts            configurações salvas (localStorage, validadas)
+  sw.js                 service worker (modelo preenchido no build)
+  audio/recorder.ts     gravação do master (MediaRecorder)
+  platform/             PWA, wake lock, MIDI, integração nativa (Capacitor)
   styles.css
+android/, ios/          projetos nativos (Capacitor)
 tests/                  testes de teoria, padrões, arpejo e sequenciador
 ```
 
