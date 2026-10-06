@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0e0a06">
   <meta name="description" content="OmniSound — chord synthesizer with strumplate, rhythm machine and arpeggiator.">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
@@ -11,92 +11,53 @@
 <body>
 
 <div class="instrument powered-off" id="instrument">
-  <!-- Corner screws -->
   <div class="screw tl"></div>
   <div class="screw tr"></div>
   <div class="screw bl"></div>
   <div class="screw br"></div>
 
-  <!-- TOP PANEL -->
-  <div class="top-panel">
-
-    <!-- Row 1: identity -->
-    <div class="top-row-1">
-
-      <!-- Power -->
-      <div class="power-section">
-        <button type="button" class="power-btn" id="powerBtn" title="Power" aria-label="Power" aria-pressed="false">⏻</button>
-        <div class="power-led" id="powerLed"></div>
-        <div class="power-tooltip" id="powerTooltip">pressione para ligar</div>
-      </div>
-
-      <!-- Brand -->
-      <div class="brand-block">
-        <div class="brand-maker">Ganwalk</div>
-        <div class="brand-name">OMNISOUND</div>
-        <div class="brand-model">CHORD SYNTH · 24 STRINGS</div>
-      </div>
-
-      <!-- Robot face (centered, large) -->
-      <div class="robot-wrap">
-        <div class="robot-screen" id="robotScreen">
-          <span class="robot-face-line" id="robotFace">(·_·)</span>
-          <span class="robot-status-line" id="robotStatus">· · ·</span>
-        </div>
-        <div class="robot-label">sys monitor</div>
-      </div>
-
-      <!-- LED display -->
-      <div class="led-block">
-        <div class="led-display" id="led">– – –</div>
-        <div class="led-label">chord display</div>
-      </div>
-
-    </div><!-- /top-row-1 -->
-
-    <!-- Row 2: sliders -->
-    <div class="top-controls">
-      <div class="knob-group">
-        <div class="knob-label">Master</div>
-        <input type="range" id="masterVol" data-setting="master" min="0" max="100">
-      </div>
-      <div class="knob-group">
-        <div class="knob-label">Chord</div>
-        <input type="range" id="chordVol" data-setting="chordVol" min="0" max="100">
-      </div>
-      <div class="knob-group">
-        <div class="knob-label">Strum</div>
-        <input type="range" id="strumVol" data-setting="strumVol" min="0" max="100">
-      </div>
-      <div class="knob-group">
-        <div class="knob-label">Tone</div>
-        <input type="range" id="toneCtrl" data-setting="tone" min="0" max="100">
-      </div>
-      <div class="knob-group">
-        <div class="knob-label">Reverb</div>
-        <input type="range" id="reverbCtrl" data-setting="reverb" min="0" max="100">
-      </div>
-      <div class="knob-group">
-        <div class="knob-label">Octave</div>
-        <div class="oct-switch" id="octaveCtrl">
-          <button type="button" class="oct-btn" data-oct="-1">–1</button>
-          <button type="button" class="oct-btn" data-oct="0">0</button>
-          <button type="button" class="oct-btn" data-oct="1">+1</button>
-        </div>
-      </div>
+  <!-- TOP PANEL: identity + (compact layouts) quick controls -->
+  <header class="top-panel">
+    <div class="power-section">
+      <button type="button" class="power-btn" id="powerBtn" title="Power" aria-label="Power" aria-pressed="false">⏻</button>
+      <div class="power-led" id="powerLed"></div>
+      <div class="power-tooltip" id="powerTooltip">pressione para ligar</div>
     </div>
-  </div>
+
+    <div class="brand-block">
+      <div class="brand-maker">Ganwalk</div>
+      <div class="brand-name">OMNISOUND</div>
+      <div class="brand-model">CHORD SYNTH</div>
+    </div>
+
+    <div class="robot-wrap">
+      <div class="robot-screen" id="robotScreen" aria-hidden="true">
+        <span class="robot-face-line" id="robotFace">(·_·)</span>
+        <span class="robot-status-line" id="robotStatus">· · ·</span>
+      </div>
+      <div class="robot-label">sys monitor</div>
+    </div>
+
+    <div class="led-block">
+      <div class="led-display" id="led" aria-live="polite">– – –</div>
+      <div class="led-label">chord display</div>
+    </div>
+
+    <nav class="quickbar" aria-label="Quick controls">
+      <button type="button" class="phys-btn" data-action="rhythm">▶ PLAY</button>
+      <button type="button" class="phys-btn" data-action="arp">▶ ARP</button>
+      <button type="button" class="phys-btn" data-action="page" id="pageBtn">⇅ EXT</button>
+      <button type="button" class="phys-btn quick-icon" data-action="sheet" aria-label="Controls" aria-controls="controls" aria-expanded="false">⚙</button>
+    </nav>
+  </header>
 
   <!-- MAIN AREA -->
-  <div class="main-area">
-
-    <!-- Chord section -->
+  <main class="main-area">
     <div class="chord-section">
-      <div class="chord-grid" id="chordGrid"></div>
+      <div class="chord-grid" id="chordGrid" data-page="0"></div>
       <div class="kb-hint">1–= 7th · Q–] Major · A–\ Minor · Space = Rhythm · Esc = Silence</div>
     </div>
 
-    <!-- Strumplate -->
     <div class="strum-section">
       <button type="button" class="chord-name-badge" id="chordBadge" title="Silence (Esc)" aria-label="Silence chord">
         <span class="chord-label">
@@ -114,66 +75,96 @@
         <div id="strumplate"></div>
       </div>
     </div>
+  </main>
 
-  </div>
-
-  <!-- BOTTOM PANEL -->
-  <div class="bottom-panel">
-
-    <!-- Rhythm -->
-    <div class="panel-box rhythm-panel">
-      <div class="panel-title">Rhythm &amp; Accompaniment</div>
-      <div class="panel-row">
-        <button type="button" class="phys-btn" id="rhythmBtn">▶ PLAY</button>
-        <div class="knob-group">
-          <div class="knob-label">Tempo</div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input type="range" id="bpmCtrl" min="40" max="220">
-            <span class="bpm-val" id="bpmVal">104</span>
-          </div>
-        </div>
-        <div class="knob-group">
-          <div class="knob-label">Rhythm Vol</div>
-          <input type="range" id="rhythmVol" data-setting="rhythmVol" min="0" max="100">
-        </div>
-      </div>
-      <div class="panel-row" id="patternBtns"></div>
+  <!-- CONTROLS: laid out inline on wide screens, a slide-in sheet on phones -->
+  <div class="controls" id="controls" aria-label="Controls">
+    <div class="sheet-header">
+      <span class="sheet-title">Controls</span>
+      <button type="button" class="phys-btn quick-icon" data-action="sheet" aria-label="Close controls">✕</button>
     </div>
 
-    <!-- Arpeggiator -->
-    <div class="panel-box arp-panel">
-      <div class="panel-title">Auto Strum / Arpeggiator</div>
-
-      <!-- Controls row: button | speed | vol | badge -->
-      <div class="panel-row" style="gap:14px;align-items:center;">
-        <button type="button" class="phys-btn" id="autoStrumBtn">▶ ARP</button>
-        <div class="arp-divider"></div>
-        <div class="knob-group">
-          <div class="knob-label">Speed</div>
-          <input type="range" id="arpSpeedCtrl" data-setting="arpSpeed" min="0" max="100">
+    <div class="mixer-panel">
+      <label class="knob-group">
+        <span class="knob-label">Master</span>
+        <input type="range" id="masterVol" data-setting="master" min="0" max="100">
+      </label>
+      <label class="knob-group">
+        <span class="knob-label">Chord</span>
+        <input type="range" id="chordVol" data-setting="chordVol" min="0" max="100">
+      </label>
+      <label class="knob-group">
+        <span class="knob-label">Strum</span>
+        <input type="range" id="strumVol" data-setting="strumVol" min="0" max="100">
+      </label>
+      <label class="knob-group">
+        <span class="knob-label">Tone</span>
+        <input type="range" id="toneCtrl" data-setting="tone" min="0" max="100">
+      </label>
+      <label class="knob-group">
+        <span class="knob-label">Reverb</span>
+        <input type="range" id="reverbCtrl" data-setting="reverb" min="0" max="100">
+      </label>
+      <div class="knob-group">
+        <span class="knob-label">Octave</span>
+        <div class="oct-switch" id="octaveCtrl" role="group" aria-label="Octave">
+          <button type="button" class="oct-btn" data-oct="-1">–1</button>
+          <button type="button" class="oct-btn" data-oct="0">0</button>
+          <button type="button" class="oct-btn" data-oct="1">+1</button>
         </div>
-        <div class="knob-group">
-          <div class="knob-label">Vol</div>
-          <input type="range" id="arpVol" data-setting="arpVol" min="0" max="100">
-        </div>
-        <span class="arp-sync-badge" id="arpSyncBadge">FREE</span>
-      </div>
-
-      <!-- Mode label + buttons -->
-      <div class="arp-mode-row">
-        <div class="arp-mode-label">Mode</div>
-        <div class="arp-mode-btns" id="arpModeBtns"></div>
       </div>
     </div>
 
-    <!-- Speaker -->
-    <div class="panel-box speaker-panel">
-      <div class="panel-title">Speaker</div>
-      <div class="speaker-grille" id="speakerGrille"></div>
-    </div>
+    <div class="bottom-panel">
+      <section class="panel-box rhythm-panel">
+        <h2 class="panel-title">Rhythm &amp; Accompaniment</h2>
+        <div class="panel-row">
+          <button type="button" class="phys-btn" data-action="rhythm">▶ PLAY</button>
+          <label class="knob-group tempo-group">
+            <span class="knob-label">Tempo</span>
+            <span class="tempo-row">
+              <input type="range" id="bpmCtrl" min="40" max="220">
+              <span class="bpm-val" id="bpmVal">110</span>
+            </span>
+          </label>
+          <label class="knob-group">
+            <span class="knob-label">Rhythm Vol</span>
+            <input type="range" id="rhythmVol" data-setting="rhythmVol" min="0" max="100">
+          </label>
+        </div>
+        <div class="panel-row" id="patternBtns" role="group" aria-label="Rhythm pattern"></div>
+      </section>
 
+      <section class="panel-box arp-panel">
+        <h2 class="panel-title">Auto Strum / Arpeggiator</h2>
+        <div class="panel-row">
+          <button type="button" class="phys-btn" data-action="arp">▶ ARP</button>
+          <div class="arp-divider"></div>
+          <label class="knob-group">
+            <span class="knob-label">Speed</span>
+            <input type="range" id="arpSpeedCtrl" data-setting="arpSpeed" min="0" max="100">
+          </label>
+          <label class="knob-group">
+            <span class="knob-label">Vol</span>
+            <input type="range" id="arpVol" data-setting="arpVol" min="0" max="100">
+          </label>
+          <span class="arp-sync-badge" id="arpSyncBadge">FREE</span>
+        </div>
+        <div class="arp-mode-row">
+          <div class="arp-mode-label">Mode</div>
+          <div class="arp-mode-btns" id="arpModeBtns" role="group" aria-label="Arpeggiator mode"></div>
+        </div>
+      </section>
+
+      <div class="panel-box speaker-panel" aria-hidden="true">
+        <div class="panel-title">Speaker</div>
+        <div class="speaker-grille" id="speakerGrille"></div>
+      </div>
+    </div>
   </div>
 </div><!-- /instrument -->
+
+<div class="sheet-backdrop" data-action="sheet"></div>
 
 <p class="credits">Desenvolvido por <a href="https://ganwalk.github.io/2026/" target="_blank" rel="noopener">Ganwalk</a></p>
 

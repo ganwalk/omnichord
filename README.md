@@ -4,6 +4,14 @@ Sintetizador de acordes inspirado em autoharps eletrônicos dos anos 80: grade d
 acordes, *strumplate* de 24 cordas, bateria eletrônica e arpejador. Roda no
 navegador (desktop e celular), sem dependências em tempo de execução.
 
+## Layouts
+
+| Tela | Layout |
+|---|---|
+| Desktop e tablet | instrumento completo, ocupa a altura da tela sem rolagem |
+| Celular deitado | grade com 3 linhas de acordes por vez (⇅ alterna básicos/estendidos), strumplate ao lado, controles no painel ⚙ |
+| Celular em pé | grade transposta (12 notas × 3 tipos), strumplate vertical à direita (graves embaixo), controles no painel ⚙ |
+
 ## Desenvolvimento
 
 Requer Node 20.19+.

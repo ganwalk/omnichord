@@ -3,6 +3,8 @@
 // finger. Moving fast across the plate plucks every string in between, spread
 // over the time since the previous event, so a quick swipe sounds like a strum
 // instead of a few scattered notes.
+// Hit-testing uses the string elements' own boxes, so the plate works in any
+// orientation the stylesheet gives it (left→right, or bottom→top on phones).
 
 import { STRING_COUNT, noteName } from '../theory';
 
@@ -19,6 +21,9 @@ export class Strumplate {
   private readonly strings: HTMLElement[] = [];
   private readonly labels: HTMLElement[] = [];
   private readonly pointers = new Map<number, { idx: number; time: number }>();
+  /** String centers along the strum axis, measured when a gesture starts. */
+  private centers: number[] = [];
+  private vertical = false;
   private readonly glowTimers: (ReturnType<typeof setTimeout> | undefined)[] = [];
 
   constructor(private readonly plate: HTMLElement, opts: StrumplateOptions) {
@@ -37,7 +42,8 @@ export class Strumplate {
       if (!opts.canPlay()) return;
       e.preventDefault();
       plate.setPointerCapture(e.pointerId);
-      const idx = this.indexAt(e.clientX);
+      this.measure();
+      const idx = this.indexAt(e);
       this.pointers.set(e.pointerId, { idx, time: e.timeStamp });
       opts.onPluck(idx, 0);
     });
@@ -45,7 +51,7 @@ export class Strumplate {
     plate.addEventListener('pointermove', e => {
       const prev = this.pointers.get(e.pointerId);
       if (!prev) return;
-      const idx = this.indexAt(e.clientX);
+      const idx = this.indexAt(e);
       if (idx === prev.idx) return;
       const dir = Math.sign(idx - prev.idx);
       const count = Math.abs(idx - prev.idx);
@@ -60,11 +66,12 @@ export class Strumplate {
     plate.addEventListener('lostpointercapture', end);
   }
 
-  /** Label only the first string of each pitch; neighbours may share a note. */
-  setNotes(notes: readonly number[]): void {
+  /** Label the chord root once per octave — enough to orient, never crowded. */
+  setNotes(notes: readonly number[], root: number | null = null): void {
     this.labels.forEach((lbl, i) => {
       const n = notes[i];
-      lbl.textContent = n !== undefined && n !== notes[i - 1] ? noteName(n) : '';
+      const show = n !== undefined && n !== notes[i - 1] && n % 12 === root;
+      lbl.textContent = show ? noteName(n) : '';
     });
   }
 
@@ -78,9 +85,21 @@ export class Strumplate {
     this.glowTimers[idx] = setTimeout(() => el.classList.remove('plucked'), 500);
   }
 
-  private indexAt(clientX: number): number {
-    const r = this.plate.getBoundingClientRect();
-    const i = Math.floor(((clientX - r.left) / r.width) * STRING_COUNT);
-    return Math.min(STRING_COUNT - 1, Math.max(0, i));
+  private measure(): void {
+    this.vertical = getComputedStyle(this.plate).flexDirection.startsWith('column');
+    this.centers = this.strings.map(el => {
+      const r = el.getBoundingClientRect();
+      return this.vertical ? r.top + r.height / 2 : r.left + r.width / 2;
+    });
+  }
+
+  /** Nearest string to the pointer along the strum axis. */
+  private indexAt(e: PointerEvent): number {
+    const pos = this.vertical ? e.clientY : e.clientX;
+    let best = 0;
+    for (let i = 1; i < this.centers.length; i++) {
+      if (Math.abs(this.centers[i] - pos) < Math.abs(this.centers[best] - pos)) best = i;
+    }
+    return best;
   }
 }

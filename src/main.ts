@@ -7,7 +7,7 @@ import { PATTERNS, findPattern } from './patterns';
 import { Sequencer } from './sequencer';
 import { DEFAULT_SETTINGS, type Settings } from './settings';
 import { NOTE_NAMES, distinctStringIndices, strumMidi, type ChordType } from './theory';
-import { ChordGrid } from './ui/chordGrid';
+import { ChordGrid, pageOf } from './ui/chordGrid';
 import { bindKeyboard } from './ui/keyboard';
 import { Robot } from './ui/robot';
 import { Strumplate } from './ui/strumplate';
@@ -60,6 +60,8 @@ function selectChord(root: number, type: ChordType): void {
   selRoot = root;
   selType = type;
   grid.setSelected(root, type);
+  // A keyboard shortcut may pick a chord on the hidden page of a compact layout.
+  if (grid.page !== pageOf(type)) setPage(pageOf(type));
   setDisplay(NOTE_NAMES[root] + type.sym, NOTE_NAMES[root], type.sym);
   chordVoice.play(root, type.intervals, settings.octave);
   rebuildStrumNotes();
@@ -83,7 +85,7 @@ function rebuildStrumNotes(): void {
   if (selRoot === null || !selType) return;
   strumNotes = strumMidi(selRoot, selType.intervals, settings.octave);
   arpIndices = distinctStringIndices(strumNotes);
-  strumplate.setNotes(strumNotes);
+  strumplate.setNotes(strumNotes, selRoot);
 }
 
 function playString(idx: number, vel: number, time: number): void {
@@ -133,14 +135,50 @@ function toggleArp(): void {
   syncTransport();
 }
 
+/** Transport buttons exist twice (quick bar + panels); keep every copy in sync. */
 function syncTransport(): void {
-  const rb = $('rhythmBtn'), ab = $('autoStrumBtn'), badge = $('arpSyncBadge');
-  rb.textContent = sequencer.rhythmActive ? '⏹ STOP' : '▶ PLAY';
-  rb.classList.toggle('active', sequencer.rhythmActive);
-  ab.textContent = sequencer.arpActive ? '⏹ ARP' : '▶ ARP';
-  ab.classList.toggle('active', sequencer.arpActive);
+  document.querySelectorAll('[data-action="rhythm"]').forEach(b => {
+    b.textContent = sequencer.rhythmActive ? '⏹ STOP' : '▶ PLAY';
+    b.classList.toggle('active', sequencer.rhythmActive);
+  });
+  document.querySelectorAll('[data-action="arp"]').forEach(b => {
+    b.textContent = sequencer.arpActive ? '⏹ ARP' : '▶ ARP';
+    b.classList.toggle('active', sequencer.arpActive);
+  });
+  const badge = $('arpSyncBadge');
   badge.textContent = sequencer.synced ? 'SYNC' : 'FREE';
   badge.classList.toggle('synced', sequencer.synced);
+}
+
+// ═══ Compact layouts: chord pages + controls sheet ═══
+
+function setPage(page: number): void {
+  grid.setPage(page);
+  const btn = $('pageBtn');
+  btn.textContent = grid.page === 0 ? '⇅ EXT' : '⇅ BASIC';
+  btn.setAttribute('aria-label', grid.page === 0 ? 'Show m7, Maj7 and Dim7 chords' : 'Show major, minor and 7th chords');
+}
+
+const sheetToggle = document.querySelector<HTMLElement>('.quickbar [data-action="sheet"]')!;
+
+function setSheet(open: boolean): void {
+  $('instrument').classList.toggle('sheet-open', open);
+  sheetToggle.setAttribute('aria-expanded', String(open));
+  if (open) $('controls').querySelector<HTMLElement>('.sheet-header button')?.focus();
+  else if ($('controls').contains(document.activeElement)) sheetToggle.focus();
+}
+
+const sheetOpen = (): boolean => $('instrument').classList.contains('sheet-open');
+
+// The sheet only exists in compact layouts; close it when leaving them.
+// Keep in sync with the compact media queries in styles.css.
+const COMPACT_QUERY = '(orientation: landscape) and (max-height: 500px), (orientation: portrait) and (max-width: 600px)';
+matchMedia(COMPACT_QUERY).addEventListener('change', e => { if (!e.matches) setSheet(false); });
+
+/** Esc: close the sheet first, otherwise silence the chord. */
+function escape(): void {
+  if (sheetOpen()) setSheet(false);
+  else clearChord();
 }
 
 // ═══ Power ═══
@@ -220,8 +258,16 @@ function initControls(): void {
     arpState = newArpState();
   });
 
-  $('rhythmBtn').addEventListener('click', toggleRhythm);
-  $('autoStrumBtn').addEventListener('click', toggleArp);
+  const actions: Record<string, () => void> = {
+    rhythm: toggleRhythm,
+    arp: toggleArp,
+    page: () => setPage(grid.page + 1),
+    sheet: () => setSheet(!sheetOpen()),
+  };
+  document.addEventListener('click', e => {
+    const el = (e.target as Element).closest<HTMLElement>('[data-action]');
+    if (el) actions[el.dataset.action!]?.();
+  });
   $('powerBtn').addEventListener('click', togglePower);
   $('chordBadge').addEventListener('click', clearChord);
 }
@@ -250,11 +296,12 @@ function buildSpeakerGrille(): void {
 
 initControls();
 buildSpeakerGrille();
+setPage(0);
 syncTransport();
 bindKeyboard({
   get powered() { return powered; },
   togglePower,
   selectChord,
-  clearChord,
+  escape,
   toggleRhythm,
 });

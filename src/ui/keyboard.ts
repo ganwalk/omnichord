@@ -20,7 +20,8 @@ export interface KeyboardActions {
   readonly powered: boolean;
   togglePower(): void;
   selectChord(root: number, type: ChordType): void;
-  clearChord(): void;
+  /** Esc: close overlays / silence the chord. */
+  escape(): void;
   toggleRhythm(): void;
 }
 
@@ -37,6 +38,11 @@ export function bindKeyboard(app: KeyboardActions): void {
     if (e.code === 'Space') e.preventDefault(); // never scroll / activate buttons
     if (e.repeat) return;
 
+    if (e.code === 'Escape') {
+      app.escape();
+      return;
+    }
+
     if (!app.powered) {
       if (isEnter || e.code === 'Space') app.togglePower();
       return;
@@ -44,7 +50,6 @@ export function bindKeyboard(app: KeyboardActions): void {
 
     const chord = KEYMAP.get(e.code);
     if (chord) app.selectChord(chord.root, chord.type);
-    else if (e.code === 'Escape') app.clearChord();
     else if (e.code === 'Space') app.toggleRhythm();
   });
 
