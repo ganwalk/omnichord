@@ -16,7 +16,7 @@ function listFiles(dir: string, root = dir): string[] {
 function serviceWorker(): Plugin {
   let outDir = 'dist';
   return {
-    name: 'omnisound-service-worker',
+    name: 'omniharp-service-worker',
     apply: 'build',
     configResolved(config) { outDir = config.build.outDir; },
     closeBundle() {

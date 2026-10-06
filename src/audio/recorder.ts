@@ -42,7 +42,7 @@ export class Recorder {
         this.rec = null;
         if (this.chunks.length === 0) return resolve(null);
         const type = rec.mimeType || this.chunks[0].type;
-        resolve(new File(this.chunks, `omnisound-${timestamp()}.${this.ext}`, { type }));
+        resolve(new File(this.chunks, `omniharp-${timestamp()}.${this.ext}`, { type }));
       }, { once: true });
       rec.stop();
     });

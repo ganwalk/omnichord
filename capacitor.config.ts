@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.ganwalk.omnisound',
-  appName: 'OmniSound',
+  appId: 'com.ganwalk.omniharp',
+  appName: 'OmniHarp',
   webDir: 'dist',
   backgroundColor: '#0e0a06',
   android: {

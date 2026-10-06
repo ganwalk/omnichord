@@ -1,4 +1,4 @@
-package com.ganwalk.omnisound;
+package com.ganwalk.omniharp;
 
 import android.os.Bundle;
 import android.view.WindowManager;

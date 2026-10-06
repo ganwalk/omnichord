@@ -1,4 +1,4 @@
-// ─── MIDI keyboard input: play a chord on the controller, OmniSound follows ───
+// ─── MIDI keyboard input: play a chord on the controller, OmniHarp follows ───
 
 import { recognizeChord, type ChordType } from '../theory';
 

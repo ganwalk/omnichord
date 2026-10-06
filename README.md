@@ -1,4 +1,4 @@
-# OmniSound
+# OmniHarp
 
 Sintetizador de acordes inspirado em autoharps eletrônicos dos anos 80: grade de
 acordes, *strumplate* de 24 cordas, bateria eletrônica e arpejador. Roda no
@@ -11,7 +11,7 @@ offline) e empacotado como app nativo Android/iOS com Capacitor.
 - 7 ritmos e arpejador com 7 modos, sincronizados no mesmo relógio
 - **Tom**: destaca os acordes do campo harmônico escolhido
 - **REC**: grava o que você toca e baixa/compartilha o áudio (WebM ou M4A)
-- **MIDI**: toque um acorde num teclado MIDI e o OmniSound acompanha
+- **MIDI**: toque um acorde num teclado MIDI e o OmniHarp acompanha
   (Chrome/Edge/Android; o Safari não suporta Web MIDI)
 - Configurações salvas no aparelho; interface em português ou inglês
   conforme o idioma do sistema; tela não apaga enquanto o instrumento está ligado

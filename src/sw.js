@@ -8,7 +8,7 @@
 
 const VERSION = '__VERSION__';
 const PRECACHE = __PRECACHE__;
-const CACHE = `omnisound-${VERSION}`;
+const CACHE = `omniharp-${VERSION}`;
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -20,7 +20,8 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k.startsWith('omnisound-') && k !== CACHE).map(k => caches.delete(k)),
+        // 'omnisound-' caches are from before the rename.
+        keys.filter(k => (k.startsWith('omniharp-') || k.startsWith('omnisound-')) && k !== CACHE).map(k => caches.delete(k)),
       ))
       .then(() => self.clients.claim()),
   );

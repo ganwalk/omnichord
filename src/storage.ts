@@ -6,7 +6,9 @@ import { ARP_MODE_NAMES } from './arp';
 import { PATTERNS } from './patterns';
 import { BPM_MAX, BPM_MIN, DEFAULT_SETTINGS, type Settings } from './settings';
 
-const KEY = 'omnisound:settings:v1';
+const KEY = 'omniharp:settings:v1';
+/** Key used before the app was renamed from OmniSound; read once as a fallback. */
+const LEGACY_KEY = 'omnisound:settings:v1';
 const SAVE_DELAY_MS = 300;
 
 const UNIT_KEYS = ['master', 'chordVol', 'strumVol', 'tone', 'reverb', 'rhythmVol', 'arpVol', 'arpSpeed'] as const;
@@ -35,7 +37,7 @@ function storage(): Storage | null {
 
 export function loadSettings(): Settings {
   try {
-    const json = storage()?.getItem(KEY);
+    const json = storage()?.getItem(KEY) ?? storage()?.getItem(LEGACY_KEY);
     return sanitizeSettings(json ? JSON.parse(json) : null);
   } catch {
     return { ...DEFAULT_SETTINGS };

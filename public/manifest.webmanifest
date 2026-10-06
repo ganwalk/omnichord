@@ -1,6 +1,6 @@
 {
-  "name": "OmniSound",
-  "short_name": "OmniSound",
+  "name": "OmniHarp",
+  "short_name": "OmniHarp",
   "description": "Chord synthesizer with strumplate, rhythm machine and arpeggiator.",
   "id": "/",
   "start_url": "/",
