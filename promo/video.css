@@ -56,9 +56,12 @@ html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; 
 .homebar { position: absolute; z-index: 2; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.85); }
 .screen iframe { position: absolute; left: 0; top: 0; border: 0; display: block; transform-origin: 0 0; }
 .phone .bezel { border-radius: 64px; }
-.phone .screen { border-radius: 48px; }
+.phone .screen { border-radius: 48px; clip-path: inset(0 round 48px); }
+/* The rotated landscape layer is composited separately and escapes the
+   screen's rounded overflow clip, so it gets the same rounded corners itself. */
+.phone .land-holder { border-radius: 48px; overflow: hidden; }
 .tablet .bezel { border-radius: 46px; }
-.tablet .screen { border-radius: 22px; }
+.tablet .screen { border-radius: 22px; clip-path: inset(0 round 22px); }
 .laptop .bezel { border-radius: 26px 26px 6px 6px; }
 .laptop .screen { border-radius: 6px; }
 .laptop .base {
