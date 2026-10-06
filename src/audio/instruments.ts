@@ -22,9 +22,10 @@ export class ChordVoice {
 
   constructor(private readonly eng: AudioEngine) {}
 
-  play(root: number, intervals: readonly number[], octave: number): void {
-    this.stop();
-    const ctx = this.eng.ctx, t = ctx.currentTime;
+  /** Start the chord now, or at audio time `when` (offline rendering). */
+  play(root: number, intervals: readonly number[], octave: number, when?: number): void {
+    this.stop(when);
+    const ctx = this.eng.ctx, t = when ?? ctx.currentTime;
     const notes = chordMidi(root, intervals, 3 + octave);
     const bass = notes[0] - 12;
 
@@ -50,14 +51,17 @@ export class ChordVoice {
     for (const h of [1, 2]) harmonic(midiToFreq(bass), h, 0.16);
   }
 
-  stop(): void {
+  stop(when?: number): void {
     if (this.voices.length === 0) return;
-    const t = this.eng.ctx.currentTime;
+    const t = when ?? this.eng.ctx.currentTime;
     for (const { osc, gain } of this.voices) {
       // Cancel a pending attack ramp first, otherwise it keeps rising after release.
-      gain.gain.cancelScheduledValues(t);
-      gain.gain.setValueAtTime(gain.gain.value, t);
-      gain.gain.setTargetAtTime(0, t, 0.06);
+      // cancelAndHoldAtTime keeps the envelope's value at `t` (needed when `t` is
+      // in the future); Firefox lacks it, so fall back to the current value.
+      const p = gain.gain;
+      if (typeof p.cancelAndHoldAtTime === 'function') p.cancelAndHoldAtTime(t);
+      else { p.cancelScheduledValues(t); p.setValueAtTime(p.value, t); }
+      p.setTargetAtTime(0, t, 0.06);
       osc.stop(t + 0.5);
     }
     this.voices = [];

@@ -85,6 +85,19 @@ android/, ios/          projetos nativos (Capacitor)
 tests/                  testes de teoria, padrões, arpejo e sequenciador
 ```
 
+## Vídeo promocional
+
+`promo/` gera um vídeo vertical de 32 s (1080×1920, 30 fps) com a interface real
+do app e uma trilha renderizada pelo próprio motor de áudio, a partir de uma
+partitura única (`promo/score.ts`) — imagem e som ficam sincronizados por quadro.
+
+```bash
+NODE_PATH="$(npm root -g)" npm run promo   # → promo/out/omniharp-promo.mp4
+```
+
+Requer Playwright com Chromium instalado globalmente e `ffmpeg`. Para mostrar o
+endereço do app no final, preencha `CTA_URL` em `promo/score.ts`.
+
 ## Atalhos de teclado
 
 Usam a posição física das teclas (funciona em teclados US e ABNT2).

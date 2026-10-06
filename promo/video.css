@@ -1,0 +1,133 @@
+/* OmniHarp promo — 1080×1920 stage. Everything is positioned by video.ts per frame. */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+
+#stage {
+  position: relative; width: 1080px; height: 1920px; overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif; color: #fff;
+  background: radial-gradient(ellipse 120% 70% at 50% 0%, #3a2a12 0%, #160f07 45%, #070503 100%);
+}
+.layer { position: absolute; inset: 0; pointer-events: none; }
+
+/* Warm light that breathes with the kick drum */
+#glow {
+  background: radial-gradient(ellipse 80% 45% at 50% 55%, rgba(224,170,70,0.35), transparent 70%);
+  opacity: 0;
+}
+#vignette { background: radial-gradient(ellipse 85% 70% at 50% 50%, transparent 55%, rgba(0,0,0,0.75) 100%); }
+#flash { background: #fff6dc; opacity: 0; mix-blend-mode: screen; }
+
+/* ── Giant strumplate motif ── */
+#bigStrings { display: flex; justify-content: space-evenly; padding: 0 20px; }
+.big-string {
+  position: relative; width: 0; height: 100%;
+}
+.big-string::before {
+  content: ''; position: absolute; left: -1px; top: 4%; bottom: 4%; width: 2px;
+  background: linear-gradient(180deg, transparent, rgba(221,184,80,0.55) 15%, rgba(221,184,80,0.75) 50%, rgba(221,184,80,0.55) 85%, transparent);
+}
+.big-string .glow {
+  position: absolute; left: -4px; top: 4%; bottom: 4%; width: 8px; border-radius: 4px;
+  background: linear-gradient(180deg, transparent, #fff3c4 20%, #ffffff 50%, #fff3c4 80%, transparent);
+  box-shadow: 0 0 18px 6px rgba(255,214,110,0.75), 0 0 60px 18px rgba(255,170,40,0.35);
+  opacity: 0;
+}
+
+/* ── Devices ── */
+.device { position: absolute; left: 0; top: 0; transform-origin: 50% 50%; opacity: 0; }
+.bezel {
+  position: absolute; inset: 0;
+  background: linear-gradient(145deg, #3a3a3e, #0c0c0e 30%, #050506 70%, #2a2a2e);
+  box-shadow: 0 40px 90px rgba(0,0,0,0.75), 0 0 0 2px #000, inset 0 0 0 2px rgba(255,255,255,0.08);
+}
+.screen { position: absolute; overflow: hidden; background: #000; }
+.screen iframe { position: absolute; left: 0; top: 0; border: 0; display: block; transform-origin: 0 0; }
+.phone .bezel { border-radius: 64px; }
+.phone .screen { border-radius: 48px; }
+.tablet .bezel { border-radius: 46px; }
+.tablet .screen { border-radius: 22px; }
+.laptop .bezel { border-radius: 26px 26px 6px 6px; }
+.laptop .screen { border-radius: 6px; }
+.laptop .base {
+  position: absolute; left: -8%; right: -8%; height: 34px; bottom: -34px;
+  background: linear-gradient(180deg, #c9c9cf, #8a8a90 60%, #4a4a50);
+  border-radius: 0 0 26px 26px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.7);
+}
+.laptop .base::before {
+  content: ''; position: absolute; left: 50%; top: 0; width: 18%; height: 10px; transform: translateX(-50%);
+  background: #6a6a70; border-radius: 0 0 10px 10px;
+}
+.land-holder { position: absolute; transform-origin: 0 0; opacity: 0; }
+
+/* Touch indicators */
+.touch {
+  position: absolute; left: 0; top: 0; width: 84px; height: 84px; margin: -42px 0 0 -42px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.25) 45%, rgba(255,255,255,0) 70%);
+  border: 3px solid rgba(255,255,255,0.85);
+  box-shadow: 0 0 30px rgba(255,220,120,0.6);
+  opacity: 0;
+}
+
+/* ── Typography ── */
+.headline {
+  position: absolute; left: 60px; right: 60px; text-align: center;
+  font-family: 'Unbounded', 'Inter', sans-serif; font-weight: 900;
+  line-height: 1.02; letter-spacing: -0.02em;
+  text-shadow: 0 6px 30px rgba(0,0,0,0.55);
+}
+.headline .line { display: block; overflow: hidden; padding: 0.06em 0; }
+.headline .word { display: inline-block; will-change: transform; }
+.gold {
+  background: linear-gradient(180deg, #fff2c2 0%, #f3cf6a 40%, #c9922a 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: none; filter: drop-shadow(0 6px 24px rgba(240,180,60,0.35));
+}
+.sub {
+  position: absolute; left: 80px; right: 80px; text-align: center;
+  font-weight: 600; font-size: 40px; line-height: 1.3; color: rgba(255,240,215,0.85);
+  letter-spacing: 0.01em;
+}
+
+/* Logo lockup */
+.logo { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
+.logo img { border-radius: 22%; box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 80px rgba(240,180,60,0.25); }
+.wordmark {
+  font-family: 'Unbounded', sans-serif; font-weight: 900; letter-spacing: -0.03em; line-height: 1;
+}
+
+/* Pattern ticker */
+#ticker { position: absolute; left: 0; top: 0; white-space: nowrap; display: flex; gap: 22px; }
+.chip {
+  font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 34px;
+  padding: 18px 34px; border-radius: 999px;
+  background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.14); color: rgba(255,255,255,0.7);
+}
+.chip.on { background: linear-gradient(180deg, #e9c25a, #b8871f); color: #2a1a00; border-color: #ffe7a0; box-shadow: 0 0 40px rgba(240,180,60,0.45); }
+
+/* Feature blitz cards */
+.card { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; align-items: center; text-align: center; opacity: 0; }
+.card .big { font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 300px; line-height: 0.95; letter-spacing: -0.04em; }
+.card .label { margin-top: 26px; font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 64px; line-height: 1.1; }
+.card .hint { margin-top: 18px; font-size: 38px; font-weight: 600; color: rgba(255,240,215,0.75); }
+.card .big.rec { color: #ff4d4d; text-shadow: 0 0 60px rgba(255,60,60,0.6); }
+
+/* Badge (SYNC) */
+.badge {
+  position: absolute; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 34px; letter-spacing: 0.12em;
+  padding: 14px 30px; border-radius: 14px; color: #5cff8a;
+  background: rgba(6,30,14,0.9); border: 2px solid rgba(92,255,138,0.45);
+  box-shadow: 0 0 40px rgba(92,255,138,0.35); opacity: 0;
+}
+
+/* End card */
+.cta {
+  display: inline-block; margin-top: 70px; padding: 34px 76px; border-radius: 999px;
+  font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 56px; color: #241500;
+  background: linear-gradient(180deg, #ffe7a0, #e6b546 50%, #b98219);
+  box-shadow: 0 20px 60px rgba(240,170,40,0.45), inset 0 2px 0 rgba(255,255,255,0.6);
+}
+.platforms { margin-top: 44px; font-size: 38px; font-weight: 600; color: rgba(255,240,215,0.8); }
+.url { margin-top: 18px; font-size: 40px; font-weight: 800; color: #f3cf6a; }

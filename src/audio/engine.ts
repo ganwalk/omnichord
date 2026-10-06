@@ -26,12 +26,12 @@ interface Graph {
 type AudioSessionNavigator = Navigator & { audioSession?: { type: string } };
 
 export class AudioEngine {
-  private _ctx: AudioContext | null = null;
+  private _ctx: BaseAudioContext | null = null;
   private graph: Graph | null = null;
   private _noise: AudioBuffer | null = null;
   private recordTap: MediaStreamAudioDestinationNode | null = null;
 
-  get ctx(): AudioContext {
+  get ctx(): BaseAudioContext {
     if (!this._ctx) throw new Error('AudioEngine used before boot()');
     return this._ctx;
   }
@@ -46,8 +46,11 @@ export class AudioEngine {
   }
   get booted(): boolean { return this._ctx !== null; }
 
-  /** Create (first call) or resume the context. Must run inside a user gesture. */
-  boot(settings: Settings): void {
+  /**
+   * Create (first call) or resume the context. Must run inside a user gesture.
+   * `context` lets tools render offline (OfflineAudioContext) with the same graph.
+   */
+  boot(settings: Settings, context?: BaseAudioContext): void {
     if (this._ctx) {
       void this.resume();
       return;
@@ -56,7 +59,7 @@ export class AudioEngine {
     const nav = navigator as AudioSessionNavigator;
     if (nav.audioSession) nav.audioSession.type = 'playback';
 
-    const ctx = new AudioContext({ latencyHint: 'interactive' });
+    const ctx = context ?? new AudioContext({ latencyHint: 'interactive' });
     this._ctx = ctx;
     this._noise = makeNoise(ctx, 1);
 
@@ -100,7 +103,7 @@ export class AudioEngine {
 
   /** Stream of the master output, for recording. */
   recordingStream(): MediaStream {
-    if (!this.graph || !this._ctx) throw new Error('AudioEngine used before boot()');
+    if (!this.graph || !(this._ctx instanceof AudioContext)) throw new Error('AudioEngine used before boot()');
     if (!this.recordTap) {
       this.recordTap = this._ctx.createMediaStreamDestination();
       this.graph.master.connect(this.recordTap);
@@ -109,12 +112,12 @@ export class AudioEngine {
   }
 
   async resume(): Promise<void> {
-    if (this._ctx && this._ctx.state !== 'running') await this._ctx.resume();
+    if (this._ctx instanceof AudioContext && this._ctx.state !== 'running') await this._ctx.resume();
   }
 
   /** Release the audio hardware (saves battery while powered off). */
   async suspend(): Promise<void> {
-    if (this._ctx && this._ctx.state === 'running') await this._ctx.suspend();
+    if (this._ctx instanceof AudioContext && this._ctx.state === 'running') await this._ctx.suspend();
   }
 }
 

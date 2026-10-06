@@ -164,6 +164,10 @@ h2 { font-weight: inherit; }
 }
 .power-tooltip.hidden { display: none; }
 
+@keyframes tooltipFloatY {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(4px); }
+}
 @keyframes tooltipFloat {
   0%, 100% { transform: translateX(-50%) translateY(0px); }
   50%      { transform: translateX(-50%) translateY(4px); }
@@ -839,6 +843,9 @@ input[type=range]::-moz-range-thumb {
 
   .top-panel { border-radius: 10px; padding: 6px 8px; gap: 8px; margin-bottom: 6px; border-bottom: 1px solid #0a0a0a; }
   .power-section { flex-direction: row; gap: 6px; padding-right: 8px; }
+  /* The power button sits at the screen edge: anchor the hint to it, not centered. */
+  .power-tooltip { left: -2px; transform: none; animation-name: tooltipFloatY; }
+  .power-tooltip::before { left: 22px; }
   .brand-maker, .brand-model { display: none; }
   .brand-name { font-size: 0.85rem; letter-spacing: 3px; }
   .robot-wrap { flex: 0 1 auto; padding: 0; border: none; }
