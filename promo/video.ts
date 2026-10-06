@@ -426,9 +426,65 @@ const h7 = new Headline(['No celular.', 'No tablet.', 'No computador.', '*Em qua
 // S8 — end card
 const endCard = el('div', 'logo');
 endCard.style.top = '470px';
-const endIcon = el('img', '', endCard);
-endIcon.src = '/icons/icon-512.png';
-Object.assign(endIcon.style, { width: '250px', height: '250px' });
+// End-card icon: the app icon (scripts/icon.svg) drawn live, so the robot's
+// face can cycle through its moods on the beat.
+const FACE_STATES = {
+  chord: '<circle cx="196" cy="242" r="33"/><circle cx="316" cy="242" r="33"/><path d="M226 290 q15 30 30 0 q15 30 30 0"/>'
+    + '<circle cx="196" cy="242" r="13" class="fill"/><circle cx="316" cy="242" r="13" class="fill"/>',
+  happy: '<path d="M168 220 L222 242 L168 264"/><path d="M344 220 L290 242 L344 264"/><path d="M226 290 q15 30 30 0 q15 30 30 0"/>',
+  strum: `${star(196, 242)}${star(316, 242)}<path d="M226 290 q15 30 30 0 q15 30 30 0"/>`,
+  beat: '<path d="M166 258 L196 222 L226 258"/><path d="M286 258 L316 222 L346 258"/><circle cx="256" cy="300" r="17"/>',
+  idle: '<circle cx="196" cy="240" r="15" class="fill"/><circle cx="316" cy="240" r="15" class="fill"/><path d="M224 304 H288"/>',
+  blink: '<path d="M166 242 H226"/><path d="M286 242 H346"/><path d="M224 304 H288"/>',
+} as const;
+type Face = keyof typeof FACE_STATES;
+/** One mood per beat from the final strum, with a quick blink at the end of "idle". */
+const FACE_LOOP: Face[] = ['strum', 'chord', 'happy', 'beat', 'idle'];
+
+function star(cx: number, cy: number, r = 34): string {
+  const pts = Array.from({ length: 10 }, (_, i) => {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.45 : r;
+    return `${(cx + rr * Math.cos(a)).toFixed(1)},${(cy + rr * Math.sin(a)).toFixed(1)}`;
+  });
+  return `<polygon points="${pts.join(' ')}" class="fill" stroke-linejoin="round"/>`;
+}
+
+const endIcon = el('div', 'end-icon', endCard);
+endIcon.innerHTML = `
+<svg viewBox="0 0 512 512" width="250" height="250">
+  <defs>
+    <linearGradient id="ec-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3632"/><stop offset=".45" stop-color="#1e1c1a"/><stop offset="1" stop-color="#0e0d0c"/></linearGradient>
+    <radialGradient id="ec-crt" cx=".5" cy=".45" r=".75"><stop offset="0" stop-color="#03301a"/><stop offset=".6" stop-color="#001a0a"/><stop offset="1" stop-color="#000804"/></radialGradient>
+    <pattern id="ec-scan" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="3" fill="#000" opacity=".28"/></pattern>
+    <filter id="ec-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <clipPath id="ec-round"><rect width="512" height="512" rx="113"/></clipPath>
+  </defs>
+  <g clip-path="url(#ec-round)">
+    <rect width="512" height="512" fill="url(#ec-body)"/>
+    <rect x="70" y="122" width="372" height="268" rx="46" fill="#0b1a0e" stroke="#000" stroke-width="6"/>
+    <rect x="84" y="136" width="344" height="240" rx="34" fill="url(#ec-crt)"/>
+    <rect x="84" y="136" width="344" height="240" rx="34" fill="#00e060" opacity=".06"/>
+    <g class="face" fill="none" stroke="#3dff8f" stroke-width="13" stroke-linecap="round" filter="url(#ec-glow)">
+      <path d="M136 186 Q104 256 136 326"/><path d="M376 186 Q408 256 376 326"/>
+      ${Object.entries(FACE_STATES).map(([k, v]) => `<g data-face="${k}">${v}</g>`).join('')}
+    </g>
+    <rect x="84" y="136" width="344" height="240" rx="34" fill="url(#ec-scan)"/>
+    <path d="M110 150 H402 Q414 150 414 162 V176 Q256 196 98 176 V162 Q98 150 110 150 Z" fill="#fff" opacity=".06"/>
+  </g>
+</svg>`;
+const faceGroups = [...endIcon.querySelectorAll<SVGGElement>('[data-face]')];
+const faceEl = endIcon.querySelector<SVGGElement>('.face')!;
+
+function renderEndFace(t: number): void {
+  const local = Math.max(0, t - T.finale);
+  const beat = Math.floor(local / 0.5);
+  let face: Face = FACE_LOOP[beat % FACE_LOOP.length];
+  if (face === 'idle' && local % 0.5 > 0.36) face = 'blink';
+  for (const g of faceGroups) g.style.display = g.dataset.face === face ? 'inline' : 'none';
+  // A little bounce on every change, like the robot reacting on the instrument.
+  const bounce = 1 + 0.07 * Math.exp(-(local % 0.5) * 14);
+  faceEl.setAttribute('transform', `translate(256 256) scale(${bounce.toFixed(4)}) translate(-256 -256)`);
+}
 const endWord = el('div', 'wordmark gold', endCard);
 endWord.textContent = 'OmniHarp';
 Object.assign(endWord.style, { fontSize: '170px', marginTop: '46px' });
@@ -437,12 +493,13 @@ Object.assign(endTag.style, { marginTop: '34px', fontSize: '50px', fontWeight: '
 endTag.innerHTML = 'Sua harpa de acordes.<br>Em qualquer tela.';
 const endCta = el('div', 'cta', endCard);
 endCta.textContent = '▶  Toque agora';
-const endPlat = el('div', 'platforms', endCard);
-endPlat.textContent = 'Web agora · Android e iOS em breve';
+// The address is the call to action's destination: right under the button.
 const endUrl = el('div', 'url', endCard);
 endUrl.textContent = CTA_URL;
 endUrl.style.display = CTA_URL ? 'block' : 'none';
-const endParts = [endIcon, endWord, endTag, endCta, endPlat, endUrl];
+const endPlat = el('div', 'platforms', endCard);
+endPlat.textContent = 'Web agora · Android e iOS em breve';
+const endParts = [endIcon, endWord, endTag, endCta, endUrl, endPlat];
 
 // Touch indicators (chord thumb + strum thumb)
 const tapDot = el('div', 'touch');
@@ -613,6 +670,7 @@ function renderFrame(t: number): void {
     part.style.opacity = String(clamp01(p * 1.3));
     part.style.transform = `translateY(${(1 - p) * 60}px) scale(${lerp(0.85, 1, p)})`;
   });
+  if (t >= T.finale) renderEndFace(t);
   endCta.style.boxShadow = `0 20px 60px rgba(240,170,40,${0.35 + 0.25 * Math.sin(t * 5)}), inset 0 2px 0 rgba(255,255,255,0.6)`;
 
   black.style.opacity = String(Math.max(1 - prog(t, 0, 0.25), prog(t, 31.2, 0.8)));

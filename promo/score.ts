@@ -10,7 +10,7 @@ export const BEAT = 0.5;
 export const BAR = 2;
 
 /** Set to the app's public URL to show it on the end card (left empty: no URL shown). */
-export const CTA_URL = '';
+export const CTA_URL = 'omniharp.vercel.app';
 
 const type = (id: string): ChordType => CHORD_TYPES.find(t => t.id === id)!;
 
