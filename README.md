@@ -94,7 +94,7 @@ trilhas renderizadas pelo próprio motor de áudio. Cada vídeo tem uma partitur
 | Vídeo | Partitura | Saída |
 |---|---|---|
 | Recursos (32 s) | `promo/score.ts` | `promo/out/omniharp-promo.mp4` |
-| História "Conexão" (34 s): o robô triste num mundo cinza encontra um cabo, se pluga e o OmniHarp ganha vida | `promo/story-score.ts` | `promo/out/omniharp-story.mp4` |
+| "Conexão" (39 s): intro sem texto — o robô triste num mundo cinza encontra um cabo, se pluga e seu rostinho viaja pelo cabo até a tela do robô no app, que liga; segue a demonstração do app | `promo/story-score.ts` | `promo/out/omniharp-story.mp4` |
 
 ```bash
 NODE_PATH="$(npm root -g)" npm run promo                    # vídeo de recursos
@@ -103,7 +103,8 @@ NODE_PATH="$(npm root -g)" npm run promo -- --video story --stills 12,20   # qua
 ```
 
 O robô da história (`promo/lib/robot.ts`) é um boneco vetorial articulado com a
-mesma tela CRT do ícone; as expressões ficam em `promo/lib/face.ts`.
+mesma tela CRT do ícone; as expressões ficam em `promo/lib/face.ts`. A
+demonstração do app (`promo/brag.ts`) é compartilhada pelos dois vídeos.
 
 Requer Playwright com Chromium instalado globalmente e `ffmpeg`. Para mostrar o
 endereço do app no final, preencha `CTA_URL` em `promo/score.ts`.

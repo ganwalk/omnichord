@@ -2,14 +2,23 @@
 
 export const stage = (): HTMLElement => document.getElementById('stage')!;
 
-export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', parent: Element = stage()): HTMLElementTagNameMap[K] {
+const parents: Element[] = [];
+const defaultParent = (): Element => parents[parents.length - 1] ?? stage();
+
+/** Build a scene inside `root`: every el()/layer() without an explicit parent goes there. */
+export function withParent<T>(root: Element, build: () => T): T {
+  parents.push(root);
+  try { return build(); } finally { parents.pop(); }
+}
+
+export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', parent: Element = defaultParent()): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
   parent.appendChild(e);
   return e;
 }
 
-export function layer(id: string, parent: Element = stage()): HTMLDivElement {
+export function layer(id: string, parent: Element = defaultParent()): HTMLDivElement {
   const d = el('div', 'layer', parent);
   d.id = id;
   return d;

@@ -1,25 +1,26 @@
-// Renders the story soundtrack offline: the app's own engine plays the music;
-// the story's sound effects are synthesized here.
+// Renders the "Conexão" soundtrack offline: the story's sound effects are
+// synthesized here; the app's own engine plays the demo's music (shifted).
 
 import { AudioEngine } from '../src/audio/engine';
 import { ChordVoice, drum, pluck } from '../src/audio/instruments';
 import { DEFAULT_SETTINGS } from '../src/settings';
 import { rand } from './lib/anim';
 import { toWavBase64 } from './lib/wav';
-import { DURATION, S, chords, hits, plucks, sfx, type Sfx } from './story-score';
+import { DURATION, S, demoChordOff, demoChords, demoHits, demoPlucks, introPlucks, sfx, type Sfx } from './story-score';
 
 const SAMPLE_RATE = 48000;
 
 async function renderAudio(): Promise<string> {
   const ctx = new OfflineAudioContext(2, SAMPLE_RATE * DURATION, SAMPLE_RATE);
   const engine = new AudioEngine();
-  engine.boot({ ...DEFAULT_SETTINGS, reverb: 0.34, chordVol: 0.5, strumVol: 0.85, rhythmVol: 0.55 }, ctx);
+  // Same mix as the feature video, so the demo part sounds identical.
+  engine.boot({ ...DEFAULT_SETTINGS, reverb: 0.3, chordVol: 0.5, strumVol: 0.85, rhythmVol: 0.6 }, ctx);
 
   const voice = new ChordVoice(engine);
-  for (const c of chords) voice.play(c.root, c.type.intervals, 0, c.t);
-  voice.stop(S.chordOff);
-  for (const p of plucks) pluck(engine, p.midi, p.vel, p.t);
-  for (const h of hits) drum(engine, h.hit, h.t);
+  for (const c of demoChords) voice.play(c.root, c.type.intervals, 0, c.t);
+  voice.stop(demoChordOff);
+  for (const p of [...introPlucks, ...demoPlucks]) pluck(engine, p.midi, p.vel, p.t);
+  for (const h of demoHits) drum(engine, h.hit, h.t);
 
   const fx = ctx.createGain();
   fx.gain.value = 1;
@@ -84,11 +85,11 @@ function wind(ctx: BaseAudioContext, out: AudioNode): void {
   lfo.connect(depth).connect(f.frequency);
   g.gain.setValueAtTime(0.0001, 0);
   g.gain.exponentialRampToValueAtTime(0.3, 1.5);
-  g.gain.setValueAtTime(0.3, S.plug);
-  g.gain.exponentialRampToValueAtTime(0.0001, S.power + 0.8);
+  g.gain.setValueAtTime(0.3, S.whip);
+  g.gain.exponentialRampToValueAtTime(0.0001, S.arrive);
   src.connect(f).connect(g).connect(out);
   src.start(0); lfo.start(0);
-  src.stop(S.power + 1); lfo.stop(S.power + 1);
+  src.stop(S.arrive + 0.1); lfo.stop(S.arrive + 0.1);
 }
 
 const SFX: Record<Sfx, Fx> = {
@@ -126,7 +127,18 @@ const SFX: Record<Sfx, Fx> = {
     os.connect(f).connect(g).connect(o);
     os.start(t); os.stop(end + 0.1);
   },
-  whoosh: (c, o, t) => noise(c, o, t, 1.0, 'bandpass', 300, 2600, 1.2, 0.09, 0.55),
+  whoosh: (c, o, t) => noise(c, o, t, 0.4, 'bandpass', 500, 4000, 1.0, 0.16, 0.22),
+  // The face travels as data: a rising sweep under a patter of bright blips.
+  transmit: (c, o, t) => {
+    const dur = S.arrive - t;
+    tone(c, o, t, 'sine', 300, 2400, dur, 0.06, dur * 0.8, 0.12);
+    for (let i = 0; t + i * 0.045 < S.arrive - 0.05; i++) {
+      const f = 1100 + rand(i * 17 + 5) * 1500;
+      tone(c, o, t + i * 0.045, 'square', f, f, 0.01, 0.018, 0.003, 0.03);
+    }
+  },
+  // Landing in the app: a soft, bright "bloop" up.
+  arrive: (c, o, t) => { tone(c, o, t, 'sine', 520, 1560, 0.12, 0.12, 0.01, 0.35); tone(c, o, t + 0.06, 'triangle', 1560, 2080, 0.1, 0.05, 0.01, 0.3); },
 };
 
 (window as unknown as { renderAudio: typeof renderAudio }).renderAudio = renderAudio;

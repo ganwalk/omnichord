@@ -95,6 +95,13 @@ export class AppView {
 
   private q(id: string): HTMLElement { return this.doc.getElementById(id)!; }
 
+  /** Hide the "press to power on" hint (when something else powers the app on). */
+  hidePowerHint(): void {
+    const style = this.doc.createElement('style');
+    style.textContent = '.power-tooltip{display:none!important}';
+    this.doc.head.appendChild(style);
+  }
+
   private btnFor(c: ChordEv): HTMLElement {
     return this.btns[CHORD_TYPES.indexOf(c.type) * 12 + c.root];
   }

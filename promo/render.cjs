@@ -20,8 +20,8 @@ const PORT = 5199;
 const VIDEOS = {
   // Feature "brag" promo: phones are touch devices.
   brag: { page: 'video.html', audio: 'audio.html', out: 'omniharp-promo.mp4', poster: 'poster.png', posterT: 29.5, duration: 32, hasTouch: true },
-  // Story promo: the big instrument is shown as the desktop card (fine pointer).
-  story: { page: 'story.html', audio: 'story-audio.html', out: 'omniharp-story.mp4', poster: 'story-poster.png', posterT: 30.5, duration: 34, hasTouch: false },
+  // Story promo: wordless robot intro, then the feature demo (touch devices, like the feature video).
+  story: { page: 'story.html', audio: 'story-audio.html', out: 'omniharp-story.mp4', poster: 'story-poster.png', posterT: 36.3, duration: 38.8, hasTouch: true },
 };
 
 async function main() {
