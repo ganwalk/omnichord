@@ -1,7 +1,8 @@
-// Render the OmniHarp promo video.
+// Render the OmniHarp promo videos.
 //
-//   node promo/render.cjs                 → promo/out/omniharp-promo.mp4 (+ poster.png)
-//   node promo/render.cjs --stills 4.2,13 → promo/out/still-4.20.png, still-13.00.png
+//   node promo/render.cjs                      → promo/out/omniharp-promo.mp4 (+ poster)
+//   node promo/render.cjs --video story        → promo/out/omniharp-story.mp4 (+ poster)
+//   node promo/render.cjs --stills 4.2,13      → promo/out/still-4.20.png, still-13.00.png
 //
 // Requires Playwright with Chromium (`npm i -g playwright && npx playwright install chromium`,
 // then run with NODE_PATH="$(npm root -g)") and ffmpeg on the PATH.
@@ -14,13 +15,22 @@ const { chromium } = require('playwright');
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(__dirname, 'out');
 const FPS = 30;
-const DURATION = 32;
 const PORT = 5199;
+
+const VIDEOS = {
+  // Feature "brag" promo: phones are touch devices.
+  brag: { page: 'video.html', audio: 'audio.html', out: 'omniharp-promo.mp4', poster: 'poster.png', posterT: 29.5, duration: 32, hasTouch: true },
+  // Story promo: the big instrument is shown as the desktop card (fine pointer).
+  story: { page: 'story.html', audio: 'story-audio.html', out: 'omniharp-story.mp4', poster: 'story-poster.png', posterT: 30.5, duration: 34, hasTouch: false },
+};
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
   const stillsArg = process.argv.indexOf('--stills');
   const stills = stillsArg > 0 ? process.argv[stillsArg + 1].split(',').map(Number) : null;
+  const videoArg = process.argv.indexOf('--video');
+  const V = VIDEOS[videoArg > 0 ? process.argv[videoArg + 1] : 'brag'];
+  if (!V) throw new Error(`unknown --video; use one of: ${Object.keys(VIDEOS).join(', ')}`);
 
   const { createServer } = await import('vite');
   const server = await createServer({
@@ -35,10 +45,10 @@ async function main() {
   const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
 
   try {
-    const ctx = await browser.newContext({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1, hasTouch: true, locale: 'pt-BR' });
+    const ctx = await browser.newContext({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1, hasTouch: V.hasTouch, locale: 'pt-BR' });
     const page = await ctx.newPage();
     page.on('pageerror', e => console.error('page error:', e.message));
-    await page.goto(`${base}/promo/video.html`);
+    await page.goto(`${base}/promo/${V.page}`);
     await page.evaluate(() => window.promoReady);
 
     if (stills) {
@@ -52,7 +62,7 @@ async function main() {
 
     // Soundtrack, rendered offline by the app's own audio engine.
     const audioPage = await ctx.newPage();
-    await audioPage.goto(`${base}/promo/audio.html`);
+    await audioPage.goto(`${base}/promo/${V.audio}`);
     await audioPage.waitForFunction(() => typeof window.renderAudio === 'function');
     const wavB64 = await audioPage.evaluate(() => window.renderAudio());
     const wav = path.join(OUT, 'soundtrack.wav');
@@ -60,7 +70,7 @@ async function main() {
     await audioPage.close();
     console.log('soundtrack rendered');
 
-    const mp4 = path.join(OUT, 'omniharp-promo.mp4');
+    const mp4 = path.join(OUT, V.out);
     const ff = spawn('ffmpeg', [
       '-y', '-loglevel', 'error',
       '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
@@ -72,14 +82,14 @@ async function main() {
     ], { stdio: ['pipe', 'inherit', 'inherit'] });
     const done = new Promise((resolve, reject) => ff.on('close', code => (code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code}`)))));
 
-    const frames = FPS * DURATION;
+    const frames = FPS * V.duration;
     for (let i = 0; i < frames; i++) {
       const t = i / FPS;
       await page.evaluate(t => window.renderFrame(t), t);
       const jpg = await page.screenshot({ type: 'jpeg', quality: 93 });
       if (!ff.stdin.write(jpg)) await new Promise(r => ff.stdin.once('drain', r));
       if (i % 60 === 0) process.stdout.write(`\rframe ${i}/${frames}`);
-      if (Math.abs(t - 29.5) < 1e-9) await page.screenshot({ path: path.join(OUT, 'poster.png') });
+      if (Math.abs(t - V.posterT) < 1e-9) await page.screenshot({ path: path.join(OUT, V.poster) });
     }
     ff.stdin.end();
     await done;

@@ -1,0 +1,32 @@
+/* "Connection" story promo — layered on top of video.css (shared devices, type, end card). */
+
+#bgGray { background: radial-gradient(ellipse 90% 60% at 50% 62%, #5c5c5c 0%, #353535 45%, #1a1a1a 100%); }
+#bgWarm {
+  background:
+    radial-gradient(ellipse 85% 55% at 50% 38%, rgba(240,180,80,0.32), transparent 70%),
+    radial-gradient(ellipse 120% 70% at 50% 0%, #4a3414 0%, #1c1308 50%, #080503 100%);
+}
+#floorGlow { background: radial-gradient(ellipse 60% 9% at 50% 78%, rgba(255,255,255,0.08), transparent 70%); }
+.fog {
+  position: absolute; width: 1400px; height: 900px; border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(190,190,190,0.22), transparent 65%);
+  filter: blur(30px);
+}
+#world { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; transform-origin: 0 0; }
+#worldSvg { position: absolute; left: 0; top: 0; overflow: visible; }
+.inst-wrap { position: absolute; transform-origin: 50% 50%; }
+.inst-wrap iframe { position: absolute; border: 0; background: transparent; }
+.rays {
+  position: absolute; width: 2600px; height: 2600px; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255,214,130,0.16) 0deg 5deg, transparent 5deg 15deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0%, rgba(0,0,0,0.6) 30%, transparent 62%);
+  mask-image: radial-gradient(circle, #000 0%, rgba(0,0,0,0.6) 30%, transparent 62%);
+}
+.inst-glow {
+  position: absolute; width: 1500px; height: 1100px; border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255,196,90,0.5), rgba(255,160,40,0.12) 45%, transparent 70%);
+}
+.dust { position: absolute; left: 0; top: 0; border-radius: 50%; }
+
+.headline.quiet { font-weight: 700; color: #c4c4c4; letter-spacing: -0.01em; text-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+.headline.quiet .gold { font-weight: 900; }

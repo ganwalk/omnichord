@@ -85,15 +85,25 @@ android/, ios/          projetos nativos (Capacitor)
 tests/                  testes de teoria, padrões, arpejo e sequenciador
 ```
 
-## Vídeo promocional
+## Vídeos promocionais
 
-`promo/` gera um vídeo vertical de 32 s (1080×1920, 30 fps) com a interface real
-do app e uma trilha renderizada pelo próprio motor de áudio, a partir de uma
-partitura única (`promo/score.ts`) — imagem e som ficam sincronizados por quadro.
+`promo/` gera vídeos verticais (1080×1920, 30 fps) com a interface real do app e
+trilhas renderizadas pelo próprio motor de áudio. Cada vídeo tem uma partitura
+única — imagem e som ficam sincronizados por quadro.
+
+| Vídeo | Partitura | Saída |
+|---|---|---|
+| Recursos (32 s) | `promo/score.ts` | `promo/out/omniharp-promo.mp4` |
+| História "Conexão" (34 s): o robô triste num mundo cinza encontra um cabo, se pluga e o OmniHarp ganha vida | `promo/story-score.ts` | `promo/out/omniharp-story.mp4` |
 
 ```bash
-NODE_PATH="$(npm root -g)" npm run promo   # → promo/out/omniharp-promo.mp4
+NODE_PATH="$(npm root -g)" npm run promo                    # vídeo de recursos
+NODE_PATH="$(npm root -g)" npm run promo -- --video story   # vídeo da história
+NODE_PATH="$(npm root -g)" npm run promo -- --video story --stills 12,20   # quadros soltos
 ```
+
+O robô da história (`promo/lib/robot.ts`) é um boneco vetorial articulado com a
+mesma tela CRT do ícone; as expressões ficam em `promo/lib/face.ts`.
 
 Requer Playwright com Chromium instalado globalmente e `ffmpeg`. Para mostrar o
 endereço do app no final, preencha `CTA_URL` em `promo/score.ts`.

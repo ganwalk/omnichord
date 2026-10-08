@@ -13,30 +13,12 @@ import '@fontsource/unbounded/800.css';
 import '@fontsource/unbounded/900.css';
 import './video.css';
 
-import { CHORD_TYPES, NOTE_NAMES, chordName, noteName, strumMidi } from '../src/theory';
-import { BAR, CTA_URL, T, activePlucks, chordAt, chords, hits, plucks, type ChordEv } from './score';
-
-// ═══ Helpers ═══
-
-const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-const prog = (t: number, t0: number, dur: number) => clamp01((t - t0) / dur);
-const lerp = (a: number, b: number, p: number) => a + (b - a) * p;
-const easeOutExpo = (x: number) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x));
-const easeInCubic = (x: number) => x * x * x;
-const easeInOutCubic = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
-const easeOutBack = (x: number) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
-/** Fade in over [a, a+din], out over [b, b+dout]. */
-const window01 = (t: number, a: number, din: number, b: number, dout: number) =>
-  Math.min(prog(t, a, din), 1 - prog(t, b, dout));
-
-const stage = document.getElementById('stage')!;
-const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', parent: HTMLElement = stage): HTMLElementTagNameMap[K] => {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  parent.appendChild(e);
-  return e;
-};
-const layer = (id: string) => { const d = el('div', 'layer'); d.id = id; return d; };
+import { clamp01, easeInCubic, easeInOutCubic, easeOutBack, easeOutExpo, lerp, prog, window01 } from './lib/anim';
+import { AppView, Device, PHONE_LANDSCAPE, PHONE_PORTRAIT, TABLET, homeBar, makeAppState, statusBar } from './lib/app';
+import { el, fitWidth, layer } from './lib/dom';
+import { iconSvg, loopFace, showFace } from './lib/face';
+import { Headline } from './lib/headline';
+import { CTA_URL, SCORE, T, activePlucks, chords, hits } from './score';
 
 // ═══ Background ═══
 
@@ -60,241 +42,10 @@ function renderBigStrings(t: number, opacity: number): void {
   });
 }
 
-// ═══ App puppet ═══
-
-const FACES = {
-  sleep: ['(×_×)', 'SLEEP'], idle: ['(·_·)', 'READY'], chord: ['(◉ω◉)', 'CHORD!'],
-  strum: ['(★ω★)', 'STRUM~'], beat: ['(^o^)♪', 'BEAT!'],
-} as const;
-
-interface AppState {
-  t: number;
-  powered: boolean;
-  chord: ChordEv | null;
-  held: ChordEv | null;
-  plucks: Map<number, number>;
-  rhythm: boolean;
-  arp: boolean;
-  robot: keyof typeof FACES;
-  rec: boolean;
-}
-
-function appState(t: number, opts: { rec?: boolean } = {}): AppState {
-  const powered = t >= T.powerOn;
-  const chord = powered ? chordAt(t) : null;
-  const held = chords.find(c => t >= c.t - 0.16 && t < c.t + 0.12) ?? null;
-  const rhythm = t >= T.rhythmOn && t < T.finale;
-  const arp = t >= T.arpOn && t < T.finale;
-
-  // Robot reacts to the most recent event still within its hold time, like the app.
-  let robot: keyof typeof FACES = powered ? 'idle' : 'sleep';
-  if (powered) {
-    let latest = -Infinity;
-    const consider = (time: number, hold: number, face: keyof typeof FACES) => {
-      if (time <= t && t - time < hold && time > latest) { latest = time; robot = face; }
-    };
-    for (const c of chords) consider(c.t, 0.5, 'chord');
-    for (const p of plucks) { if (p.t > t) break; if (p.t >= T.firstChord) consider(p.t, 0.28, 'strum'); }
-    if (rhythm) consider(T.rhythmOn + Math.floor((t - T.rhythmOn) / BAR) * BAR, 0.2, 'beat');
-  }
-  return {
-    t, powered, chord, held: powered ? held : null,
-    plucks: powered ? activePlucks(t, 0.5) : new Map(),
-    rhythm, arp, robot, rec: !!opts.rec && powered,
-  };
-}
-
-class AppView {
-  readonly iframe: HTMLIFrameElement;
-  private doc!: Document;
-  private btns: HTMLElement[] = [];
-  private strings: HTMLElement[] = [];
-  private labels: HTMLElement[] = [];
-  private lastChord: ChordEv | null | undefined = undefined;
-  private lastHeld: ChordEv | null | undefined = undefined;
-
-  /** The app fills a w×h viewport placed at (ox, oy) inside `parent` (below the status bar etc.). */
-  constructor(parent: HTMLElement, readonly w: number, readonly h: number, readonly ox = 0, readonly oy = 0) {
-    this.iframe = el('iframe', '', parent);
-    this.iframe.width = String(w);
-    this.iframe.height = String(h);
-    Object.assign(this.iframe.style, { width: `${w}px`, height: `${h}px`, left: `${ox}px`, top: `${oy}px` });
-  }
-
-  /** App point → point in the parent element. */
-  toParent(x: number, y: number): [number, number] { return [x + this.ox, y + this.oy]; }
-
-  async load(): Promise<void> {
-    await new Promise<void>(resolve => { this.iframe.addEventListener('load', () => resolve(), { once: true }); this.iframe.src = '/'; });
-    const doc = this.iframe.contentDocument!;
-    for (let i = 0; i < 200 && doc.querySelectorAll('.chord-btn').length < 72; i++) await new Promise(r => setTimeout(r, 25));
-    this.doc = doc;
-    const style = doc.createElement('style');
-    // Frame-exact rendering: no transitions; the promo drives every change.
-    style.textContent = '*,*::before,*::after{transition:none!important;caret-color:transparent}';
-    doc.head.appendChild(style);
-    this.btns = [...doc.querySelectorAll<HTMLElement>('.chord-btn')];
-    this.strings = [...doc.querySelectorAll<HTMLElement>('.s-string')];
-    this.labels = [...doc.querySelectorAll<HTMLElement>('.s-note-lbl')];
-    doc.querySelectorAll('#patternBtns .mode-btn').forEach(b => b.classList.toggle('active', b.textContent === 'Rock'));
-    const bpm = doc.getElementById('bpmVal'); if (bpm) bpm.textContent = '120';
-    const bpmIn = doc.getElementById('bpmCtrl') as HTMLInputElement | null; if (bpmIn) bpmIn.value = '120';
-  }
-
-  private q(id: string): HTMLElement { return this.doc.getElementById(id)!; }
-
-  private btnFor(c: ChordEv): HTMLElement {
-    return this.btns[CHORD_TYPES.indexOf(c.type) * 12 + c.root];
-  }
-
-  /** Bounding box of an element inside the app, in app (iframe) pixels. */
-  rect(sel: string | HTMLElement): DOMRect {
-    const e = typeof sel === 'string' ? this.doc.querySelector(sel)! : sel;
-    return e.getBoundingClientRect();
-  }
-  chordButton(c: ChordEv): HTMLElement { return this.btnFor(c); }
-  stringEl(i: number): HTMLElement { return this.strings[i]; }
-
-  apply(s: AppState): void {
-    const d = this.doc;
-    this.q('instrument').classList.toggle('powered-off', !s.powered);
-    this.q('instrument').classList.toggle('recording', s.rec);
-    this.q('powerBtn').classList.toggle('on', s.powered);
-    this.q('powerLed').classList.toggle('on', s.powered);
-    this.q('powerLed').classList.toggle('green', s.powered);
-    this.q('powerTooltip').classList.toggle('hidden', s.powered);
-
-    if (s.chord !== this.lastChord) {
-      if (this.lastChord) this.btnFor(this.lastChord).classList.remove('selected');
-      if (s.chord) this.btnFor(s.chord).classList.add('selected');
-      const name = s.chord ? chordName(s.chord.root, s.chord.type) : '';
-      this.q('led').textContent = s.chord ? name : s.powered ? 'READY' : '– – –';
-      this.q('chordRoot').textContent = s.chord ? NOTE_NAMES[s.chord.root] : '–';
-      this.q('chordSym').textContent = s.chord ? s.chord.type.sym : '';
-      this.q('chordBadge').classList.toggle('has-chord', !!s.chord);
-      const notes = s.chord ? strumMidi(s.chord.root, s.chord.type.intervals, 0) : [];
-      this.labels.forEach((l, i) => {
-        const n = notes[i];
-        l.textContent = n !== undefined && n !== notes[i - 1] && n % 12 === s.chord!.root ? noteName(n) : '';
-      });
-      this.lastChord = s.chord;
-    }
-    if (!s.chord && s.powered) this.q('led').textContent = 'READY';
-    if (s.held !== this.lastHeld) {
-      if (this.lastHeld) this.btnFor(this.lastHeld).classList.remove('held');
-      if (s.held) this.btnFor(s.held).classList.add('held');
-      this.lastHeld = s.held;
-    }
-
-    // Plucked strings: restart the vibrate animation per pluck, then seek it.
-    this.strings.forEach((str, i) => {
-      const pt = s.plucks.get(i);
-      if (pt === undefined) {
-        if (str.classList.contains('plucked')) { str.classList.remove('plucked'); delete str.dataset.pt; }
-        return;
-      }
-      if (str.dataset.pt !== String(pt)) {
-        str.classList.remove('plucked');
-        void str.offsetWidth;
-        str.classList.add('plucked');
-        str.dataset.pt = String(pt);
-      }
-      for (const a of str.getAnimations({ subtree: true })) { a.pause(); a.currentTime = (s.t - pt) * 1000; }
-    });
-
-    d.querySelectorAll('[data-action="rhythm"]').forEach(b => {
-      b.textContent = s.rhythm ? '⏹ STOP' : '▶ PLAY';
-      b.classList.toggle('active', s.rhythm);
-    });
-    d.querySelectorAll('[data-action="arp"]').forEach(b => {
-      b.textContent = s.arp ? '⏹ ARP' : '▶ ARP';
-      b.classList.toggle('active', s.arp);
-    });
-    const sync = s.rhythm && s.arp;
-    this.q('arpSyncBadge').textContent = sync ? 'SYNC' : 'FREE';
-    this.q('arpSyncBadge').classList.toggle('synced', sync);
-    const rec = d.getElementById('recBtn');
-    if (rec) { rec.textContent = s.rec ? '■ SAVE' : '● REC'; rec.classList.toggle('recording', s.rec); }
-
-    const [face, status] = FACES[s.robot];
-    this.q('robotFace').textContent = face;
-    this.q('robotStatus').textContent = status;
-
-    // Everything else that animates (tooltip float, REC pulse): seek to t.
-    for (const a of d.getAnimations()) {
-      const target = (a.effect as KeyframeEffect | null)?.target as Element | null;
-      if (target?.classList.contains('s-string')) continue;
-      a.pause();
-      a.currentTime = (s.t * 1000) % 2400;
-    }
-  }
-}
-
-// ═══ Devices ═══
-
-type Kind = 'phone' | 'tablet' | 'laptop';
-const BEZEL: Record<Kind, number> = { phone: 18, tablet: 28, laptop: 24 };
-
-class Device {
-  readonly el: HTMLDivElement;
-  readonly screen: HTMLDivElement;
-  readonly w: number;
-  readonly h: number;
-  readonly bezel: number;
-  cx = 540; cy = 960; s = 1; rot = 0;
-
-  constructor(kind: Kind, readonly sw: number, readonly sh: number) {
-    this.bezel = BEZEL[kind];
-    this.w = sw + 2 * this.bezel;
-    this.h = sh + 2 * this.bezel;
-    this.el = el('div', `device ${kind}`);
-    Object.assign(this.el.style, { width: `${this.w}px`, height: `${this.h}px` });
-    el('div', 'bezel', this.el);
-    this.screen = el('div', 'screen', this.el);
-    Object.assign(this.screen.style, { left: `${this.bezel}px`, top: `${this.bezel}px`, width: `${sw}px`, height: `${sh}px` });
-    if (kind === 'laptop') el('div', 'base', this.el);
-  }
-
-  place(cx: number, cy: number, s: number, rot = 0, opacity = 1): void {
-    Object.assign(this, { cx, cy, s, rot });
-    this.el.style.display = opacity <= 0.001 ? 'none' : 'block';
-    this.el.style.opacity = String(opacity);
-    this.el.style.left = `${cx - this.w / 2}px`;
-    this.el.style.top = `${cy - this.h / 2}px`;
-    this.el.style.transform = `rotate(${rot}deg) scale(${s})`;
-  }
-
-  /** Map a point on the screen (screen px) to stage coordinates. */
-  toStage(x: number, y: number): [number, number] {
-    const dx = (this.bezel + x - this.w / 2) * this.s, dy = (this.bezel + y - this.h / 2) * this.s;
-    const r = (this.rot * Math.PI) / 180;
-    return [this.cx + dx * Math.cos(r) - dy * Math.sin(r), this.cy + dx * Math.sin(r) + dy * Math.cos(r)];
-  }
-}
+const appState = makeAppState(SCORE);
 
 // Hero phone: portrait app, plus a landscape app pre-rotated inside the screen,
 // revealed when the phone turns sideways.
-// System areas a real device reserves (iPhone-style): the app runs between them,
-// edge to edge, like it does on a phone.
-const PHONE_PORTRAIT = { top: 47, bottom: 34 };
-const PHONE_LANDSCAPE = { side: 47, bottom: 21 };
-const TABLET = { top: 24, bottom: 20 };
-
-const SIGNAL = '<svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>';
-const WIFI = '<svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0z"/><path d="M3.4 6.9a6.5 6.5 0 0 1 9.2 0l-1.4 1.4a4.5 4.5 0 0 0-6.4 0z"/><path d="M1.1 4.6a9.8 9.8 0 0 1 13.8 0l-1.4 1.4a7.8 7.8 0 0 0-11 0z"/></svg>';
-const BATTERY = '<svg width="27" height="13" viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2.5" y="2.5" width="16" height="8" rx="2"/><path d="M25 4.5v4a2 2 0 0 0 0-4z" opacity=".45"/></svg>';
-
-function statusBar(parent: HTMLElement, width: number, height: number, size: number): void {
-  const bar = el('div', 'statusbar', parent);
-  Object.assign(bar.style, { width: `${width}px`, height: `${height}px`, fontSize: `${size}px`, padding: `0 ${size * 1.9}px` });
-  el('span', 'clock', bar).textContent = '9:41';
-  el('span', 'icons', bar).innerHTML = SIGNAL + WIFI + BATTERY;
-}
-function homeBar(parent: HTMLElement, cx: number, bottom: number, width: number): void {
-  const bar = el('div', 'homebar', parent);
-  Object.assign(bar.style, { left: `${cx - width / 2}px`, bottom: `${bottom}px`, width: `${width}px` });
-}
-
 const hero = new Device('phone', 390, 844);
 // Portrait app + its status bar fade out together when the phone turns (iOS hides it sideways).
 const portraitLayer = el('div', 'layer', hero.screen);
@@ -320,49 +71,6 @@ homeBar(phone2.screen, 195, 9, 134);
 const phone2App = new AppView(phone2.screen, 390, 844 - PHONE_PORTRAIT.top - PHONE_PORTRAIT.bottom, 0, PHONE_PORTRAIT.top);
 
 // ═══ Typography ═══
-
-class Headline {
-  readonly el: HTMLDivElement;
-  private readonly lines: HTMLElement[][] = [];
-
-  /** `lines`: words prefixed with * are gold. */
-  constructor(lines: string[], private readonly times: number[], private readonly out: number, top: number, size: number) {
-    this.el = el('div', 'headline');
-    Object.assign(this.el.style, { top: `${top}px`, fontSize: `${size}px` });
-    for (const line of lines) {
-      const l = el('span', 'line', this.el);
-      const words = line.split(' ').map((w, i, arr) => {
-        const span = el('span', 'word' + (w.startsWith('*') ? ' gold' : ''), l);
-        span.textContent = w.replace(/^\*/, '') + (i < arr.length - 1 ? ' ' : '');
-        return span;
-      });
-      this.lines.push(words);
-    }
-  }
-
-  /** Shrink the font until every line fits the stage width. */
-  fit(maxW = 960): void {
-    let size = parseFloat(this.el.style.fontSize);
-    const lineEls = [...this.el.querySelectorAll<HTMLElement>('.line')];
-    const widest = () => Math.max(...lineEls.map(l => [...l.children].reduce((w, c) => w + (c as HTMLElement).offsetWidth, 0)));
-    while (widest() > maxW && size > 20) { size -= 2; this.el.style.fontSize = `${size}px`; }
-  }
-
-  render(t: number): void {
-    const visible = t >= this.times[0] - 0.01 && t < this.out + 0.4;
-    this.el.style.display = visible ? 'block' : 'none';
-    if (!visible) return;
-    const q = easeInCubic(prog(t, this.out, 0.3));
-    this.lines.forEach((words, li) => {
-      words.forEach((w, wi) => {
-        const p = easeOutExpo(prog(t, this.times[li] + wi * 0.05, 0.5));
-        const y = (1 - p) * 110 - q * 110;
-        w.style.transform = `translateY(${y}%)`;
-        w.style.opacity = String(Math.min(p * 1.5, 1) * (1 - q));
-      });
-    });
-  }
-}
 
 const sub = (text: string, top: number) => { const d = el('div', 'sub'); d.style.top = `${top}px`; d.textContent = text; return d; };
 
@@ -428,59 +136,13 @@ const endCard = el('div', 'logo');
 endCard.style.top = '470px';
 // End-card icon: the app icon (scripts/icon.svg) drawn live, so the robot's
 // face can cycle through its moods on the beat.
-const FACE_STATES = {
-  chord: '<circle cx="196" cy="242" r="33"/><circle cx="316" cy="242" r="33"/><path d="M226 290 q15 30 30 0 q15 30 30 0"/>'
-    + '<circle cx="196" cy="242" r="13" class="fill"/><circle cx="316" cy="242" r="13" class="fill"/>',
-  happy: '<path d="M168 220 L222 242 L168 264"/><path d="M344 220 L290 242 L344 264"/><path d="M226 290 q15 30 30 0 q15 30 30 0"/>',
-  strum: `${star(196, 242)}${star(316, 242)}<path d="M226 290 q15 30 30 0 q15 30 30 0"/>`,
-  beat: '<path d="M166 258 L196 222 L226 258"/><path d="M286 258 L316 222 L346 258"/><circle cx="256" cy="300" r="17"/>',
-  idle: '<circle cx="196" cy="240" r="15" class="fill"/><circle cx="316" cy="240" r="15" class="fill"/><path d="M224 304 H288"/>',
-  blink: '<path d="M166 242 H226"/><path d="M286 242 H346"/><path d="M224 304 H288"/>',
-} as const;
-type Face = keyof typeof FACE_STATES;
-/** One mood per beat from the final strum, with a quick blink at the end of "idle". */
-const FACE_LOOP: Face[] = ['strum', 'chord', 'happy', 'beat', 'idle'];
-
-function star(cx: number, cy: number, r = 34): string {
-  const pts = Array.from({ length: 10 }, (_, i) => {
-    const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.45 : r;
-    return `${(cx + rr * Math.cos(a)).toFixed(1)},${(cy + rr * Math.sin(a)).toFixed(1)}`;
-  });
-  return `<polygon points="${pts.join(' ')}" class="fill" stroke-linejoin="round"/>`;
-}
-
 const endIcon = el('div', 'end-icon', endCard);
-endIcon.innerHTML = `
-<svg viewBox="0 0 512 512" width="250" height="250">
-  <defs>
-    <linearGradient id="ec-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3632"/><stop offset=".45" stop-color="#1e1c1a"/><stop offset="1" stop-color="#0e0d0c"/></linearGradient>
-    <radialGradient id="ec-crt" cx=".5" cy=".45" r=".75"><stop offset="0" stop-color="#03301a"/><stop offset=".6" stop-color="#001a0a"/><stop offset="1" stop-color="#000804"/></radialGradient>
-    <pattern id="ec-scan" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="3" fill="#000" opacity=".28"/></pattern>
-    <filter id="ec-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-    <clipPath id="ec-round"><rect width="512" height="512" rx="113"/></clipPath>
-  </defs>
-  <g clip-path="url(#ec-round)">
-    <rect width="512" height="512" fill="url(#ec-body)"/>
-    <rect x="70" y="122" width="372" height="268" rx="46" fill="#0b1a0e" stroke="#000" stroke-width="6"/>
-    <rect x="84" y="136" width="344" height="240" rx="34" fill="url(#ec-crt)"/>
-    <rect x="84" y="136" width="344" height="240" rx="34" fill="#00e060" opacity=".06"/>
-    <g class="face" fill="none" stroke="#3dff8f" stroke-width="13" stroke-linecap="round" filter="url(#ec-glow)">
-      <path d="M136 186 Q104 256 136 326"/><path d="M376 186 Q408 256 376 326"/>
-      ${Object.entries(FACE_STATES).map(([k, v]) => `<g data-face="${k}">${v}</g>`).join('')}
-    </g>
-    <rect x="84" y="136" width="344" height="240" rx="34" fill="url(#ec-scan)"/>
-    <path d="M110 150 H402 Q414 150 414 162 V176 Q256 196 98 176 V162 Q98 150 110 150 Z" fill="#fff" opacity=".06"/>
-  </g>
-</svg>`;
-const faceGroups = [...endIcon.querySelectorAll<SVGGElement>('[data-face]')];
+endIcon.innerHTML = iconSvg('ec', 250);
 const faceEl = endIcon.querySelector<SVGGElement>('.face')!;
 
 function renderEndFace(t: number): void {
   const local = Math.max(0, t - T.finale);
-  const beat = Math.floor(local / 0.5);
-  let face: Face = FACE_LOOP[beat % FACE_LOOP.length];
-  if (face === 'idle' && local % 0.5 > 0.36) face = 'blink';
-  for (const g of faceGroups) g.style.display = g.dataset.face === face ? 'inline' : 'none';
+  showFace(endIcon, loopFace(local));
   // A little bounce on every change, like the robot reacting on the instrument.
   const bounce = 1 + 0.07 * Math.exp(-(local % 0.5) * 14);
   faceEl.setAttribute('transform', `translate(256 256) scale(${bounce.toFixed(4)}) translate(-256 -256)`);
@@ -685,13 +347,6 @@ async function init(): Promise<void> {
   const [bx, by] = heroPortrait.toParent(btn.x + btn.width / 2, btn.y + btn.height / 2);
   powerPt = { x: hero.bezel + bx, y: hero.bezel + by };
   for (const h of [h1, h3, h4, h5, h7]) h.fit();
-  const fitWidth = (e: HTMLElement, start: number, max: number) => {
-    let size = start;
-    e.style.fontSize = `${size}px`;
-    e.style.whiteSpace = 'nowrap';
-    e.style.width = 'max-content';
-    while (e.offsetWidth > max && size > 40) { size -= 6; e.style.fontSize = `${size}px`; }
-  };
   for (const { b } of cards) fitWidth(b, 300, 940);
   fitWidth(endWord, 170, 940);
   fitWidth(logoTopWord, 132, 780);
