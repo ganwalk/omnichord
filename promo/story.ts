@@ -36,7 +36,7 @@ const storyRoot = el('div', 'layer', stage());
 const overlay = el('div', 'layer', stage());
 
 const {
-  world, cablePaths, robotPlug, plugHalo, glint, sparks, robot, fogA, fogB, dust, black,
+  world, cablePaths, robotPlug, plugHalo, glint, sparks, puffs, robot, fogA, fogB, dust, black,
 } = withParent(storyRoot, () => {
   layer('bgGray');
   layer('floorGlow');
@@ -59,10 +59,18 @@ const {
       <path class="cable-base" fill="none" stroke="#1d1d1f" stroke-width="15" stroke-linecap="round"/>
       <path class="cable-hi" fill="none" stroke="#4a4a50" stroke-width="4" stroke-linecap="round" opacity=".7"/>
     </g>
+    <g id="puffs"></g>
     <g id="robotLayer"></g>
     <g id="robotPlug">${plugMarkup()}<g class="plug-halo" opacity="0"><circle r="46" fill="#fff1b8" filter="url(#soft-glow)"/></g></g>
     <g id="glint" opacity="0"><path d="M0 -46 L9 -9 L46 0 L9 9 L0 46 L-9 9 L-46 0 L-9 -9 Z" fill="#fffbe6"/></g>
     <g id="sparks"></g>`;
+  const puffsG = svg.querySelector<SVGGElement>('#puffs')!;
+  const puffs = Array.from({ length: S.hops.length * 8 }, () => {
+    const c = document.createElementNS(SVGNS, 'circle');
+    c.setAttribute('fill', '#d6d6d6');
+    puffsG.appendChild(c);
+    return c;
+  });
   const sparksG = svg.querySelector<SVGGElement>('#sparks')!;
   const sparks = Array.from({ length: 16 }, () => {
     const l = document.createElementNS(SVGNS, 'line');
@@ -82,7 +90,7 @@ const {
   const black = layer('black');
   black.style.background = '#000';
   return {
-    world, sparks, dust, black, fogA, fogB,
+    world, sparks, puffs, dust, black, fogA, fogB,
     cablePaths: ['.cable-glow', '.cable-base', '.cable-hi'].map(s => svg.querySelector<SVGPathElement>(s)!),
     robotPlug: svg.querySelector<SVGGElement>('#robotPlug')!,
     plugHalo: svg.querySelector<SVGGElement>('.plug-halo')!,
@@ -116,10 +124,32 @@ const streaks = el('div', 'layer streaks', overlay);
 
 const lin = (x: number) => x;
 
+/** 0…1 arc of the hop in progress (and which one), or null on the ground. */
+function hopPhase(t: number): number {
+  for (const s0 of S.hops) if (t >= s0 && t < s0 + HOP) return (t - s0) / HOP;
+  return -1;
+}
+const landings = S.hops.map(h => h + HOP);
+const DOUBLE_TAKE = S.glint + 0.12;   // the little startled jump when it notices the glint
+
 function hopHeight(t: number): number {
-  let h = 0;
-  for (const s0 of S.hops) if (t >= s0 && t < s0 + HOP) h = Math.max(h, Math.sin(Math.PI * (t - s0) / HOP) * 115);
+  const p = hopPhase(t);
+  let h = p >= 0 ? Math.sin(Math.PI * p) * 115 : 0;
+  if (t >= DOUBLE_TAKE && t < DOUBLE_TAKE + 0.24) h = Math.max(h, Math.sin(Math.PI * (t - DOUBLE_TAKE) / 0.24) * 26);
   return h;
+}
+
+/** Damped spring: an impulse of `amp` at each event time, ringing at `freq`. */
+function spring(t: number, events: [number, number][], freq = 22, decay = 4.5): number {
+  let v = 0;
+  for (const [te, amp] of events) if (t >= te) v += amp * Math.exp(-(t - te) * decay) * Math.sin((t - te) * freq);
+  return v;
+}
+/** Damped bob that starts at its full value (a weight settling). */
+function settle(t: number, events: [number, number][], freq = 16, decay = 8): number {
+  let v = 0;
+  for (const [te, amp] of events) if (t >= te) v += amp * Math.exp(-(t - te) * decay) * Math.cos((t - te) * freq);
+  return v;
 }
 
 function squash(t: number): number {
@@ -128,47 +158,101 @@ function squash(t: number): number {
     q -= 0.13 * window01(t, s0 - 0.14, 0.1, s0 - 0.02, 0.06);            // anticipation
     q -= 0.16 * window01(t, s0 + HOP, 0.04, s0 + HOP + 0.06, 0.14);      // landing
   }
+  q -= 0.1 * window01(t, S.plug - 0.18, 0.12, S.plug, 0.1);             // effort: pushing the plug in
   return q + (t >= S.power ? 0.14 * Math.exp(-(t - S.power) * 6) : 0); // jolt of power
 }
 
+// Moods, with natural blinks and a double take when the glint catches its eye.
 const FACE_TRACK: [number, Face][] = [
-  [0, 'sad'], [S.sigh - 0.05, 'blink'], [S.sigh + 0.25, 'sad'], [S.glint, 'blink'], [S.glint + 0.12, 'curious'],
-  [S.inspect, 'wow'], [S.insert, 'curious'], [S.power, 'chord'], [S.orb + 0.15, 'blink'],
+  [0, 'sad'], [0.9, 'blink'], [1.06, 'sad'], [2.6, 'blink'], [2.78, 'sad'],
+  [S.sigh - 0.05, 'blink'], [S.sigh + 0.3, 'sad'],
+  [DOUBLE_TAKE - 0.06, 'blink'], [DOUBLE_TAKE + 0.02, 'wow'], [S.glint + 0.5, 'curious'],
+  [5.35, 'blink'], [5.45, 'curious'], [6.85, 'blink'], [6.95, 'curious'],
+  [S.inspect, 'wow'], [8.0, 'curious'], [8.12, 'blink'], [8.2, 'happy'], [S.insert + 0.2, 'curious'],
+  [S.power, 'chord'], [S.orb + 0.15, 'blink'],
 ];
 function faceAt(t: number): Face {
-  if (t >= S.plug && t < S.power) return rand(Math.floor(t * 30)) > 0.5 ? 'blink' : 'curious';
   let f: Face = 'sad';
   for (const [k, v] of FACE_TRACK) if (t >= k) f = v;
   return f;
 }
 
 function robotPose(t: number): RobotPose {
-  // Dim and flickering in the grey world; bright when powered; dark again once its face has left.
+  const hp = hopPhase(t);
+  const air = hp >= 0 ? Math.sin(Math.PI * hp) : 0;
+  const powered = t >= S.power;
+
+  // Screen: dim and unsteady in the grey world; on plugging in the CRT collapses to
+  // a flickering line, then opens out bright. Once its face has left, it goes dark.
   let power = t < S.plug ? 0.32 + 0.06 * Math.sin(t * 23) * Math.sin(t * 7)
-    : t < S.power ? (rand(Math.floor(t * 30) + 7) > 0.45 ? 1 : 0.15) : 1;
+    : t < S.power ? (rand(Math.floor(t * 30) + 7) > 0.4 ? 1 : 0.35) : 1;
   if (t >= S.orb) power = lerp(1, 0.12, prog(t, S.orb, 0.2));
+  const crtOpen = track(t, [[S.plug, 1], [S.plug + 0.1, 0.03, easeInCubic], [S.power, 0.03], [S.power + 0.1, 1.08, easeOutCubic], [S.power + 0.18, 1]]);
+
+  // Breathing: slow and heavy when sad (with one big sigh), quick and bright once alive.
+  const breathe = (powered ? 1 + 0.022 * Math.sin((2 * Math.PI * t) / 0.55) : 1 + 0.016 * Math.sin((2 * Math.PI * t) / 2.8))
+    + 0.06 * window01(t, S.sigh, 0.45, S.sigh + 0.55, 0.7);
+
+  const takeoffs = S.hops.map(h => [h, 10] as [number, number]);
   return {
     x: track(t, [[0, 380], [S.hops[0], 380], [S.hops[0] + HOP, 480, lin], [S.hops[1] + HOP, 580, lin], [S.hops[2] + HOP, 680, lin]]),
     y: 1500,
     s: 1,
     hop: hopHeight(t),
     squash: squash(t),
-    crouch: track(t, [[0, 1], [S.stand, 1], [S.stand + 0.45, 0, easeOutBack], [S.reach, 0], [S.pickup - 0.1, 0.65], [S.inspect, 0]]),
-    tilt: track(t, [[0, 16], [S.sigh - 0.05, 16], [S.sigh + 0.3, 24], [S.sigh + 0.75, 15], [S.glint, 15], [S.glint + 0.3, -9],
-      [S.stand, -4], [S.hops[0], 0], [S.reach, 0], [S.pickup - 0.1, 12], [S.inspect, -7], [S.insert, -2], [S.plug, 0],
-      [S.power, -7], [S.power + 0.4, 0]]),
-    armL: track(t, [[0, 6], [S.power - 0.05, 6], [S.power + 0.2, 110, easeOutBack]]),
-    armR: track(t, [[0, -6], [S.reach, -6], [S.pickup - 0.1, -30], [S.pickup + 0.05, -30], [S.inspect + 0.1, -152], [S.insert, -152],
-      [S.plug - 0.15, -14], [S.plug + 0.05, -14], [S.plug + 0.3, -6]]),
+    crouch: track(t, [[0, 1], [S.stand - 0.15, 1], [S.stand, 1.12], [S.stand + 0.45, 0, easeOutBack], [S.reach, 0], [S.pickup - 0.1, 0.65], [S.inspect, 0]]),
+    // Lean: rocking while sitting, reaching for the plug, pushing it in, recoiling from the surge.
+    lean: (t < S.stand ? 1.6 * Math.sin(t * 1.3) : 0) + 6 * air
+      + track(t, [[S.sigh, 0], [S.sigh + 0.5, -2.5], [S.sigh + 1.1, 0], [S.reach, 0], [S.pickup - 0.1, 11], [S.pickup + 0.15, 6],
+        [S.inspect, -2], [S.insert, 0], [S.plug - 0.12, 9], [S.plug, 4], [S.power, 0], [S.power + 0.06, -7], [S.power + 0.6, 0]]),
+    breathe,
+    tilt: track(t, [[0, 16], [S.sigh - 0.05, 16], [S.sigh + 0.3, 24], [S.sigh + 0.75, 15], [S.glint, 15], [DOUBLE_TAKE, -11, easeOutBack],
+      [S.glint + 0.6, -6], [S.stand, -4], [S.hops[0], 0], [S.reach, 0], [S.pickup - 0.1, 12], [S.inspect, -9], [8.0, -14], [8.2, 4], [S.insert, -2],
+      [S.plug, 0], [S.power, -7], [S.power + 0.4, 0]]) + (t < S.stand ? 2 * Math.sin(t * 1.3 + 0.6) : 0),
+    // The head lags behind the body: it sinks on takeoff/landing and settles; pops up at the surge.
+    headY: settle(t, [...landings.map(l => [l, 16] as [number, number]), ...takeoffs, [S.sigh + 0.5, 8]])
+      + track(t, [[0, 6], [S.stand, 6], [S.stand + 0.4, 0]]) - 14 * (powered ? Math.exp(-(t - S.power) * 6) : 0),
+    // Springy antenna: drooped when sad, perks up at the glint, rings on every bump.
+    antenna: track(t, [[0, 16], [S.glint + 0.08, 16], [S.glint + 0.22, -4, easeOutBack], [S.glint + 0.5, 0]])
+      + spring(t, [[S.sigh + 0.1, 6], [DOUBLE_TAKE, -14], [S.stand + 0.45, 10], ...takeoffs, ...landings.map(l => [l, -16] as [number, number]),
+        [S.pickup, 7], [S.inspect, -8], [S.plug, 16], [S.power, 28]]),
+    // Arms: swing up in the air and settle after landing (follow-through); celebrate when powered.
+    armL: track(t, [[0, 6], [S.power - 0.05, 6], [S.power + 0.2, 110, easeOutBack]]) + 24 * air
+      + spring(t, landings.map(l => [l, 12] as [number, number]), 14, 6),
+    armR: track(t, [[0, -6], [S.reach, -6], [S.pickup - 0.1, -30], [S.pickup + 0.05, -30], [S.inspect + 0.1, -152], [8.0, -140], [S.insert, -152],
+      [S.plug - 0.15, -8], [S.plug + 0.05, -8], [S.plug + 0.3, -4]]) - 24 * air
+      - spring(t, landings.map(l => [l, 12] as [number, number]), 14, 6),
+    legTuck: hp >= 0 ? Math.pow(air, 0.7) : 0,
     face: faceAt(t),
-    lookX: track(t, [[0, 0], [S.glint, 0], [S.glint + 0.2, 22], [S.hops[2] + HOP, 22], [S.pickup, 12], [S.inspect, 6], [S.insert, 18], [S.plug, 0],
-      [S.travel, 0], [S.travel + 0.2, 24]]),
-    lookY: track(t, [[0, 8], [S.glint, 8], [S.glint + 0.2, 0], [S.reach, 0], [S.pickup, 18], [S.inspect, -8], [S.insert, 10], [S.plug, 0],
-      [S.travel, 0], [S.travel + 0.2, 10]]),
+    // Eyes: drift while sad, snap to the glint, dart around while studying the plug.
+    lookX: track(t, [[0, -6], [1.8, 4], [3.2, -4], [S.glint, -4], [DOUBLE_TAKE, 24, easeOutCubic], [S.hops[2] + HOP, 22],
+      [S.pickup, 12], [S.inspect, 6], [7.85, -8], [7.95, 10], [8.1, 4], [S.insert, 18], [S.plug, 0], [S.travel, 0], [S.travel + 0.2, 24]]),
+    lookY: track(t, [[0, 8], [S.glint, 8], [DOUBLE_TAKE, 0], [S.reach, 0], [S.pickup, 18], [S.inspect, -8], [7.85, -12], [S.insert, 10],
+      [S.plug, 0], [S.travel, 0], [S.travel + 0.2, 10]]),
+    crtOpen,
+    shiver: t >= S.plug && t < S.power ? 2.5 * Math.sin(t * 120)
+      : powered ? 8 * Math.exp(-(t - S.power) * 5) * Math.sin(t * 95) : 0,
     power,
     led: t < S.plug ? 0 : t < S.power ? power : 1,
     sat: track(t, [[0, 0.3], [S.power, 0.3], [S.power + 0.3, 0.6]]),
   };
+}
+
+/** Little clouds of dust kicked up where it lands. */
+function renderPuffs(t: number): void {
+  puffs.forEach((c, k) => {
+    const land = landings[Math.floor(k / 8)], i = k % 8;
+    const age = t - land;
+    if (age < 0 || age > 0.6) { c.setAttribute('opacity', '0'); return; }
+    robot.apply(robotPose(land));
+    const [fx, fy] = robot.feet();
+    const side = i % 2 ? 1 : -1, sp = 120 + rand(k * 5 + 1) * 160;
+    const e = easeOutCubic(age / 0.6);
+    c.setAttribute('cx', String(fx + side * (70 + e * sp)));
+    c.setAttribute('cy', String(fy - 6 - e * (20 + rand(k * 3) * 40)));
+    c.setAttribute('r', String(8 + e * (14 + rand(k) * 12)));
+    c.setAttribute('opacity', String(0.55 * (1 - e)));
+  });
 }
 
 // ═══ Cable, plug and the light that travels along it ═══
@@ -280,6 +364,7 @@ const WHIP = 0.26;   // whip pan length (s)
 function renderStory(t: number): void {
   const cam = camera(t);
   world.style.transform = `translate(540px, 960px) scale(${cam.s}) translate(${-cam.cx}px, ${-cam.cy}px)`;
+  renderPuffs(t);
   robot.apply(robotPose(t));
   renderCable(t);
 
@@ -334,6 +419,8 @@ function renderFrame(t: number): void {
     orb.style.transform = `translate(${pos[0]}px, ${pos[1]}px) scale(${scale * pulse})`;
     orb.style.opacity = String(clamp01(prog(t, S.orb, 0.1)) * (1 - prog(t, S.arrive - 0.03, 0.08)));
   }
+  // Measuring the light's path re-poses the robot at other times; put this frame's pose back.
+  if (w < 1) robot.apply(robotPose(Math.min(t, S.whip + WHIP)));
 }
 
 // ═══ Boot ═══

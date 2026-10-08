@@ -9,10 +9,17 @@ export interface RobotPose {
   hop: number;                       // lift off the floor (local units)
   squash: number;                    // 1 neutral, <1 squashed, >1 stretched
   crouch: number;                    // 0 standing … 1 sitting
+  lean: number;                      // upper-body lean from the hips (deg, + leans right); feet stay planted
+  breathe: number;                   // torso breathing scale (1 = rest)
   tilt: number;                      // head tilt (deg)
+  headY: number;                     // head lag / bob (local units, + down)
+  antenna: number;                   // antenna bend (deg), for springy secondary motion
   armL: number; armR: number;        // arm swing (deg); +L / −R raise them outward
+  legTuck: number;                   // 0…1 legs pulled up mid-air
   face: Face;
   lookX: number; lookY: number;      // eye direction (face units)
+  crtOpen: number;                   // 1 open picture … 0 collapsed to a line (CRT on/off)
+  shiver: number;                    // power-surge vibration (local units)
   power: number;                     // screen brightness 0…1
   led: number;                       // antenna light 0…1
   sat: number;                       // colour saturation 0…1 (grey world → colour)
@@ -21,9 +28,11 @@ export interface RobotPose {
 const SHOULDER_L: [number, number] = [-130, -290];
 const SHOULDER_R: [number, number] = [130, -290];
 const HAND_R: [number, number] = [133, -160];
-const PORT: [number, number] = [131, -196];
+/** Cable port: low on the right side, below the hanging hand, so the arm never covers the plug. */
+const PORT: [number, number] = [131, -112];
 const NECK: [number, number] = [0, -352];
 const HEAD_C: [number, number] = [0, -474];
+const ANTENNA_BASE: [number, number] = [0, -600];
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 
@@ -34,6 +43,8 @@ export class Robot {
   private readonly legs: SVGGElement;
   private readonly torso: SVGGElement;
   private readonly head: SVGGElement;
+  private readonly antenna: SVGGElement;
+  private readonly crtLine: SVGRectElement;
   private readonly screen: SVGGElement;
   private readonly face: SVGGElement;
   private readonly armLEl: SVGGElement;
@@ -83,14 +94,18 @@ export class Robot {
           <g class="armL">${arm(-1)}</g>
           <g class="armR">${arm(1)}</g>
           <g class="head">
-            <path d="M0 -600 L0 -662" stroke="#3b200f" stroke-width="9" stroke-linecap="round"/>
-            <circle class="bulb-glow" cx="0" cy="-676" r="34" fill="#5dff9f" filter="url(#${p}-soft)" opacity="0"/>
-            <circle class="bulb" cx="0" cy="-676" r="17" fill="#2c2c2c" stroke="#3b200f" stroke-width="5"/>
+            <g class="antenna">
+              <path d="M0 -600 L0 -662" stroke="#3b200f" stroke-width="9" stroke-linecap="round"/>
+              <circle class="bulb-glow" cx="0" cy="-676" r="34" fill="#5dff9f" filter="url(#${p}-soft)" opacity="0"/>
+              <circle class="bulb" cx="0" cy="-676" r="17" fill="#2c2c2c" stroke="#3b200f" stroke-width="5"/>
+            </g>
             <circle cx="-172" cy="-474" r="22" fill="#4a2b17" stroke="#3b200f" stroke-width="5"/>
             <circle cx="172" cy="-474" r="22" fill="#4a2b17" stroke="#3b200f" stroke-width="5"/>
             <rect x="-170" y="-604" width="340" height="256" rx="58" fill="url(#${p}-shell)" stroke="#3b200f" stroke-width="7"/>
             <rect x="-170" y="-604" width="340" height="256" rx="58" fill="url(#${p}-shell-h)"/>
-            <g class="screen" transform="translate(${HEAD_C[0]} ${HEAD_C[1]}) scale(0.68) translate(-256 -256)">${crtScreen(p)}</g>
+            <g class="screen" transform="translate(${HEAD_C[0]} ${HEAD_C[1]}) scale(0.68) translate(-256 -256)">${crtScreen(p)}
+              <rect class="crt-line" x="96" y="250" width="320" height="12" rx="6" fill="#d8ffe6" opacity="0" filter="url(#${p}-glow)"/>
+            </g>
           </g>
         </g>
       </g>`;
@@ -102,6 +117,8 @@ export class Robot {
     this.legs = q('.legs');
     this.torso = q('.torso');
     this.head = q('.head');
+    this.antenna = q('.antenna');
+    this.crtLine = q('.crt-line');
     this.screen = q('.screen');
     this.face = q('.face');
     this.armLEl = q('.armL');
@@ -122,14 +139,21 @@ export class Robot {
     this.shadow.setAttribute('rx', String(160 * (1 - Math.min(hop, 300) / 600)));
     this.shadow.setAttribute('opacity', String(0.35 * (1 - Math.min(hop, 300) / 450)));
     this.body.setAttribute('transform', `translate(0 ${-hop}) scale(${sx} ${sy})`);
-    this.legs.setAttribute('transform', `scale(1 ${legScale})`);
-    this.torso.setAttribute('transform', `translate(0 ${drop})`);
-    this.head.setAttribute('transform', `rotate(${tilt} ${NECK[0]} ${NECK[1]})`);
+    // Legs pull up mid-air; the torso sits on them and breathes from the hips.
+    this.legs.setAttribute('transform', `translate(0 ${-pose.legTuck * 22}) scale(1 ${legScale * (1 - pose.legTuck * 0.28)})`);
+    const hip = -86;
+    this.torso.setAttribute('transform', `translate(0 ${drop - pose.legTuck * 22}) rotate(${pose.lean} 0 ${hip}) translate(0 ${hip}) scale(${2 - pose.breathe} ${pose.breathe}) translate(0 ${-hip})`);
+    this.head.setAttribute('transform', `translate(${pose.shiver} ${pose.headY}) rotate(${tilt} ${NECK[0]} ${NECK[1]})`);
+    this.antenna.setAttribute('transform', `rotate(${pose.antenna} ${ANTENNA_BASE[0]} ${ANTENNA_BASE[1]})`);
     this.armLEl.setAttribute('transform', `rotate(${pose.armL} ${SHOULDER_L[0]} ${SHOULDER_L[1]})`);
     this.armREl.setAttribute('transform', `rotate(${pose.armR} ${SHOULDER_R[0]} ${SHOULDER_R[1]})`);
 
     showFace(this.screen, pose.face);
-    this.face.setAttribute('transform', `translate(${pose.lookX} ${pose.lookY})`);
+    // CRT: the picture collapses to a bright line when it switches off, and opens out of it.
+    const open = Math.max(0.02, pose.crtOpen);
+    this.face.setAttribute('transform', `translate(${pose.lookX} ${pose.lookY}) translate(256 256) scale(${1 + (1 - open) * 0.15} ${open}) translate(-256 -256)`);
+    this.crtLine.setAttribute('opacity', String(pose.crtOpen < 0.98 ? (1 - open) * pose.power : 0));
+    this.crtLine.setAttribute('transform', `translate(256 256) scale(${0.3 + 0.7 * open + (1 - open) * 0.4} 1) translate(-256 -256)`);
     this.face.style.opacity = String(0.18 + 0.82 * pose.power);
     this.screen.style.filter = `brightness(${0.45 + 0.75 * pose.power})`;
     this.bulb.setAttribute('fill', pose.led > 0.02 ? `url(#${this.p}-bulb)` : '#2c2c2c');
@@ -137,12 +161,18 @@ export class Robot {
     this.bulbGlow.setAttribute('opacity', String(0.9 * pose.led));
   }
 
-  /** World position of a local point on the torso (moves with crouch, hop and squash). */
+  /** World position of a local point on the torso (follows crouch, breathing, hop, squash and lean). */
   private torsoToWorld(lx: number, ly: number): [number, number] {
-    const { x, y, s, hop, crouch } = this.pose;
+    const { x, y, s, hop, crouch, lean, breathe, legTuck } = this.pose;
     const [sx, sy] = squashScale(this.pose.squash);
-    const drop = 92 * 0.5 * crouch;
-    return [x + s * lx * sx, y + s * ((ly + drop) * sy - hop)];
+    const hip = -86;
+    // torso: breathe around the hips, lean from the hips, then drop with the crouch and tucked legs
+    const bx0 = lx * (2 - breathe), by0 = (ly - hip) * breathe;
+    const a = (lean * Math.PI) / 180;
+    const tx = bx0 * Math.cos(a) - by0 * Math.sin(a);
+    const ty = bx0 * Math.sin(a) + by0 * Math.cos(a) + hip + 92 * 0.5 * crouch - legTuck * 22;
+    // body: squash and hop; root: scale and place
+    return [x + s * tx * sx, y + s * (ty * sy - hop)];
   }
 
   /** World position of the right hand (holds the plug). */
@@ -156,8 +186,11 @@ export class Robot {
   /** World position of the cable port on the right side of the torso. */
   port(): [number, number] { return this.torsoToWorld(PORT[0] + 6, PORT[1]); }
 
-  /** World position of the face (for the colour wave origin). */
-  faceCenter(): [number, number] { return this.torsoToWorld(HEAD_C[0], HEAD_C[1]); }
+  /** World position of the face. */
+  faceCenter(): [number, number] { return this.torsoToWorld(HEAD_C[0] + this.pose.shiver, HEAD_C[1] + this.pose.headY); }
+
+  /** World position of the feet (for dust puffs). */
+  feet(): [number, number] { return [this.pose.x, this.pose.y]; }
 
   get scale(): number { return this.pose.s; }
 }
