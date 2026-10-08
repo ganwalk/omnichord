@@ -17,13 +17,13 @@ import './story.css';
 
 import { createBrag } from './brag';
 import {
-  clamp01, easeInCubic, easeInOutCubic, easeOutBack, easeOutCubic, easeOutExpo,
+  clamp01, easeInCubic, easeInOutCubic, easeInOutSine, easeOutBack, easeOutCubic, easeOutExpo,
   lerp, prog, rand, track, window01, type Key,
 } from './lib/anim';
 import { el, layer, stage, withParent } from './lib/dom';
 import { FACE_STATES, type Face } from './lib/face';
-import { Robot, type RobotPose } from './lib/robot';
-import { DURATION, HOP, OFFSET, S } from './story-score';
+import { Robot, type Arm, type Foot, type RobotPose } from './lib/robot';
+import { DURATION, OFFSET, S, SWING, WALK, WALK_END, footfalls } from './story-score';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 type Vec = [number, number];
@@ -36,7 +36,7 @@ const storyRoot = el('div', 'layer', stage());
 const overlay = el('div', 'layer', stage());
 
 const {
-  world, cablePaths, robotPlug, plugHalo, glint, sparks, puffs, robot, fogA, fogB, dust, black,
+  world, cablePaths, robotPlug, plugClip, plugHalo, glint, sparks, puffs, robot, fogA, fogB, dust, black,
 } = withParent(storyRoot, () => {
   layer('bgGray');
   layer('floorGlow');
@@ -52,6 +52,7 @@ const {
   svg.innerHTML = `
     <defs>
       <linearGradient id="plug-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbe6a6"/><stop offset=".5" stop-color="#d6a64e"/><stop offset="1" stop-color="#8a6420"/></linearGradient>
+      <clipPath id="plug-clip"><rect class="plug-clip-rect" x="-600" y="-200" width="600" height="400"/></clipPath>
       <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
     </defs>
     <g id="cable">
@@ -65,7 +66,7 @@ const {
     <g id="glint" opacity="0"><path d="M0 -46 L9 -9 L46 0 L9 9 L0 46 L-9 9 L-46 0 L-9 -9 Z" fill="#fffbe6"/></g>
     <g id="sparks"></g>`;
   const puffsG = svg.querySelector<SVGGElement>('#puffs')!;
-  const puffs = Array.from({ length: S.hops.length * 8 }, () => {
+  const puffs = Array.from({ length: footfalls.length * 4 }, () => {
     const c = document.createElementNS(SVGNS, 'circle');
     c.setAttribute('fill', '#d6d6d6');
     puffsG.appendChild(c);
@@ -93,6 +94,7 @@ const {
     world, sparks, puffs, dust, black, fogA, fogB,
     cablePaths: ['.cable-glow', '.cable-base', '.cable-hi'].map(s => svg.querySelector<SVGPathElement>(s)!),
     robotPlug: svg.querySelector<SVGGElement>('#robotPlug')!,
+    plugClip: svg.querySelector<SVGRectElement>('.plug-clip-rect')!,
     plugHalo: svg.querySelector<SVGGElement>('.plug-halo')!,
     glint: svg.querySelector<SVGGElement>('#glint')!,
     robot: new Robot(svg.querySelector('#robotLayer')!),
@@ -101,7 +103,7 @@ const {
 
 /** Plug: tip at (0,0) pointing +x; cable leaves from (−124, 0). */
 function plugMarkup(): string {
-  return `<g class="plug">
+  return `<g class="plug" clip-path="url(#plug-clip)">
     <rect x="-128" y="-10" width="26" height="20" rx="6" fill="#2a2a2c"/>
     <rect x="-106" y="-19" width="74" height="38" rx="10" fill="#151517" stroke="#000" stroke-width="3"/>
     <rect x="-100" y="-15" width="62" height="7" rx="3" fill="#fff" opacity=".08"/>
@@ -122,22 +124,7 @@ const streaks = el('div', 'layer streaks', overlay);
 
 // ═══ Choreography ═══
 
-const lin = (x: number) => x;
-
-/** 0…1 arc of the hop in progress (and which one), or null on the ground. */
-function hopPhase(t: number): number {
-  for (const s0 of S.hops) if (t >= s0 && t < s0 + HOP) return (t - s0) / HOP;
-  return -1;
-}
-const landings = S.hops.map(h => h + HOP);
-const DOUBLE_TAKE = S.glint + 0.12;   // the little startled jump when it notices the glint
-
-function hopHeight(t: number): number {
-  const p = hopPhase(t);
-  let h = p >= 0 ? Math.sin(Math.PI * p) * 115 : 0;
-  if (t >= DOUBLE_TAKE && t < DOUBLE_TAKE + 0.24) h = Math.max(h, Math.sin(Math.PI * (t - DOUBLE_TAKE) / 0.24) * 26);
-  return h;
-}
+const DOUBLE_TAKE = S.glint + 0.12;   // the startled little jolt when it notices the glint
 
 /** Damped spring: an impulse of `amp` at each event time, ringing at `freq`. */
 function spring(t: number, events: [number, number][], freq = 22, decay = 4.5): number {
@@ -151,14 +138,40 @@ function settle(t: number, events: [number, number][], freq = 16, decay = 8): nu
   for (const [te, amp] of events) if (t >= te) v += amp * Math.exp(-(t - te) * decay) * Math.cos((t - te) * freq);
   return v;
 }
+const at = (times: readonly number[], amp: number): [number, number][] => times.map(x => [x, amp]);
+
+// ── The walk: feet alternate (near foot first); each step lifts one foot, carries it
+// forward with a heel-toe rock and plants it; the hips ride over the feet. ──
+
+const STRIDE = (WALK.to - WALK.from) / (WALK.steps - 1);
+const LIFT = 30;
+
+interface WalkState { body: number; L: Foot; R: Foot; bob: number; phase: number }
+function walk(t: number): WalkState {
+  const pos = { L: 0, R: 0 }, foot = { L: { lift: 0, pitch: 0 }, R: { lift: 0, pitch: 0 } };
+  for (let k = 0; k < WALK.steps; k++) {
+    const side = k % 2 ? 'R' : 'L';
+    const from = Math.max(0, (k - 1) * STRIDE), to = Math.min(k + 1, WALK.steps - 1) * STRIDE;
+    const t0 = WALK.start + k * WALK.step, p = prog(t, t0, WALK.step * SWING);
+    if (t < t0) break;
+    pos[side] = lerp(from, to, easeInOutSine(p));
+    if (p < 1) foot[side] = { lift: Math.sin(Math.PI * p) * LIFT * (k === 0 || k === WALK.steps - 1 ? 0.7 : 1), pitch: 16 * Math.sin(2 * Math.PI * p) };
+  }
+  const pelvis = (pos.L + pos.R) / 2;
+  const phase = (t - WALK.start) / WALK.step;           // steps taken (continuous)
+  const inWalk = Math.min(1, Math.max(0, phase) * 2, Math.max(0, WALK.steps - phase) * 2);
+  // Hips dip as weight lands on a foot and rise as the other passes under.
+  const bob = inWalk * 7 * Math.cos(2 * Math.PI * (phase - SWING));
+  return {
+    body: WALK.from + pelvis, bob, phase,
+    L: { dx: pos.L - pelvis, ...foot.L }, R: { dx: pos.R - pelvis, ...foot.R },
+  };
+}
 
 function squash(t: number): number {
   let q = 1;
-  for (const s0 of S.hops) {
-    q -= 0.13 * window01(t, s0 - 0.14, 0.1, s0 - 0.02, 0.06);            // anticipation
-    q -= 0.16 * window01(t, s0 + HOP, 0.04, s0 + HOP + 0.06, 0.14);      // landing
-  }
-  q -= 0.1 * window01(t, S.plug - 0.18, 0.12, S.plug, 0.1);             // effort: pushing the plug in
+  for (const f of footfalls) q -= 0.025 * window01(t, f, 0.03, f + 0.04, 0.12);   // weight landing
+  q -= 0.1 * window01(t, S.plug - 0.14, 0.08, S.plug, 0.1);             // effort: shoving the plug home
   return q + (t >= S.power ? 0.14 * Math.exp(-(t - S.power) * 6) : 0); // jolt of power
 }
 
@@ -167,7 +180,7 @@ const FACE_TRACK: [number, Face][] = [
   [0, 'sad'], [0.9, 'blink'], [1.06, 'sad'], [2.6, 'blink'], [2.78, 'sad'],
   [S.sigh - 0.05, 'blink'], [S.sigh + 0.3, 'sad'],
   [DOUBLE_TAKE - 0.06, 'blink'], [DOUBLE_TAKE + 0.02, 'wow'], [S.glint + 0.5, 'curious'],
-  [5.35, 'blink'], [5.45, 'curious'], [6.85, 'blink'], [6.95, 'curious'],
+  [5.55, 'blink'], [5.65, 'curious'], [6.85, 'blink'], [6.95, 'curious'],
   [S.inspect, 'wow'], [8.0, 'curious'], [8.12, 'blink'], [8.2, 'happy'], [S.insert + 0.2, 'curious'],
   [S.power, 'chord'], [S.orb + 0.15, 'blink'],
 ];
@@ -177,9 +190,10 @@ function faceAt(t: number): Face {
   return f;
 }
 
+/** The keyframed (forward-kinematics) pose; poseAt() adds the hand guiding the plug in. */
 function robotPose(t: number): RobotPose {
-  const hp = hopPhase(t);
-  const air = hp >= 0 ? Math.sin(Math.PI * hp) : 0;
+  const w = walk(t);
+  const walking = window01(t, WALK.start - 0.1, 0.2, WALK_END - 0.1, 0.25);
   const powered = t >= S.power;
 
   // Screen: dim and unsteady in the grey world; on plugging in the CRT collapses to
@@ -193,42 +207,53 @@ function robotPose(t: number): RobotPose {
   const breathe = (powered ? 1 + 0.022 * Math.sin((2 * Math.PI * t) / 0.55) : 1 + 0.016 * Math.sin((2 * Math.PI * t) / 2.8))
     + 0.06 * window01(t, S.sigh, 0.45, S.sigh + 0.55, 0.7);
 
-  const takeoffs = S.hops.map(h => [h, 10] as [number, number]);
+  const sway = Math.sin(Math.PI * w.phase) * walking;   // weight shifting foot to foot
   return {
-    x: track(t, [[0, 380], [S.hops[0], 380], [S.hops[0] + HOP, 480, lin], [S.hops[1] + HOP, 580, lin], [S.hops[2] + HOP, 680, lin]]),
+    x: w.body,
     y: 1500,
     s: 1,
-    hop: hopHeight(t),
+    turn: track(t, [[WALK.start - 0.2, 0], [WALK.start + 0.08, 1], [WALK_END - 0.05, 1], [WALK_END + 0.25, 0]]),
+    crouch: track(t, [[0, 1], [S.glint, 1], [DOUBLE_TAKE, 0.8, easeOutCubic], [DOUBLE_TAKE + 0.3, 1],
+      [S.stand - 0.15, 1], [S.stand, 1.08], [S.stand + 0.45, 0, easeOutBack], [S.reach, 0], [S.pickup - 0.1, 1.05], [S.inspect, 0],
+      [S.insert, 0], [S.plug - 0.12, 0.18], [S.plug, 0.1], [S.power, 0], [S.power + 0.06, -0.06], [S.power + 0.4, 0]]),
+    bob: w.bob,
+    footL: w.L, footR: w.R,
     squash: squash(t),
-    crouch: track(t, [[0, 1], [S.stand - 0.15, 1], [S.stand, 1.12], [S.stand + 0.45, 0, easeOutBack], [S.reach, 0], [S.pickup - 0.1, 0.65], [S.inspect, 0]]),
-    // Lean: rocking while sitting, reaching for the plug, pushing it in, recoiling from the surge.
-    lean: (t < S.stand ? 1.6 * Math.sin(t * 1.3) : 0) + 6 * air
-      + track(t, [[S.sigh, 0], [S.sigh + 0.5, -2.5], [S.sigh + 1.1, 0], [S.reach, 0], [S.pickup - 0.1, 11], [S.pickup + 0.15, 6],
-        [S.inspect, -2], [S.insert, 0], [S.plug - 0.12, 9], [S.plug, 4], [S.power, 0], [S.power + 0.06, -7], [S.power + 0.6, 0]]),
+    // Lean: rocking while sitting, forward while walking, reaching for the plug, pushing it in, recoiling from the surge.
+    lean: (t < S.stand ? 1.6 * Math.sin(t * 1.3) : 0) + walking * 5 + 1.5 * sway
+      + track(t, [[S.sigh, 0], [S.sigh + 0.5, -2.5], [S.sigh + 1.1, 0], [S.reach, 0], [S.pickup - 0.1, 24], [S.pickup + 0.15, 12],
+        [S.inspect, -2], [S.insert, 0], [S.plug - 0.12, 7], [S.plug, 3], [S.power, 0], [S.power + 0.06, -7], [S.power + 0.6, 0]]),
     breathe,
     tilt: track(t, [[0, 16], [S.sigh - 0.05, 16], [S.sigh + 0.3, 24], [S.sigh + 0.75, 15], [S.glint, 15], [DOUBLE_TAKE, -11, easeOutBack],
-      [S.glint + 0.6, -6], [S.stand, -4], [S.hops[0], 0], [S.reach, 0], [S.pickup - 0.1, 12], [S.inspect, -9], [8.0, -14], [8.2, 4], [S.insert, -2],
-      [S.plug, 0], [S.power, -7], [S.power + 0.4, 0]]) + (t < S.stand ? 2 * Math.sin(t * 1.3 + 0.6) : 0),
-    // The head lags behind the body: it sinks on takeoff/landing and settles; pops up at the surge.
-    headY: settle(t, [...landings.map(l => [l, 16] as [number, number]), ...takeoffs, [S.sigh + 0.5, 8]])
-      + track(t, [[0, 6], [S.stand, 6], [S.stand + 0.4, 0]]) - 14 * (powered ? Math.exp(-(t - S.power) * 6) : 0),
-    // Springy antenna: drooped when sad, perks up at the glint, rings on every bump.
+      [S.glint + 0.6, -6], [S.stand, -4], [WALK.start, 0], [S.reach, 0], [S.pickup - 0.1, 12], [S.inspect, -9], [8.0, -14], [8.2, 4], [S.insert, -2],
+      [S.plug, 0], [S.power, -7], [S.power + 0.4, 0]]) + (t < S.stand ? 2 * Math.sin(t * 1.3 + 0.6) : 0) - 2.5 * sway,
+    // The head lags behind the body: it sinks as each foot lands and settles; pops up at the surge.
+    headY: settle(t, [...at(footfalls, 7), [S.sigh + 0.5, 8], [S.stand + 0.4, 10]])
+      + track(t, [[0, 6], [S.glint, 6], [DOUBLE_TAKE, -8, easeOutCubic], [DOUBLE_TAKE + 0.3, 6], [S.stand, 6], [S.stand + 0.4, 0]])
+      - 14 * (powered ? Math.exp(-(t - S.power) * 6) : 0),
+    // Springy antenna: drooped when sad, perks up at the glint, rings with every footstep and bump.
     antenna: track(t, [[0, 16], [S.glint + 0.08, 16], [S.glint + 0.22, -4, easeOutBack], [S.glint + 0.5, 0]])
-      + spring(t, [[S.sigh + 0.1, 6], [DOUBLE_TAKE, -14], [S.stand + 0.45, 10], ...takeoffs, ...landings.map(l => [l, -16] as [number, number]),
+      + walking * -6 + spring(t, [[S.sigh + 0.1, 6], [DOUBLE_TAKE, -14], [S.stand + 0.45, 10], ...at(footfalls, -6),
         [S.pickup, 7], [S.inspect, -8], [S.plug, 16], [S.power, 28]]),
-    // Arms: swing up in the air and settle after landing (follow-through); celebrate when powered.
-    armL: track(t, [[0, 6], [S.power - 0.05, 6], [S.power + 0.2, 110, easeOutBack]]) + 24 * air
-      + spring(t, landings.map(l => [l, 12] as [number, number]), 14, 6),
-    armR: track(t, [[0, -6], [S.reach, -6], [S.pickup - 0.1, -30], [S.pickup + 0.05, -30], [S.inspect + 0.1, -152], [8.0, -140], [S.insert, -152],
-      [S.plug - 0.15, -8], [S.plug + 0.05, -8], [S.plug + 0.3, -4]]) - 24 * air
-      - spring(t, landings.map(l => [l, 12] as [number, number]), 14, 6),
-    legTuck: hp >= 0 ? Math.pow(air, 0.7) : 0,
+    // Arms swing against the legs while walking; celebrate (both up) when powered.
+    armL: {
+      a: track(t, [[0, 6], [S.plug, 6], [S.plug + 0.12, 40, easeOutCubic], [S.power - 0.05, 30], [S.power + 0.2, 145, easeOutBack]])
+        + 0.4 * w.L.dx + spring(t, [[S.stand + 0.4, 8]], 14, 6),
+      e: track(t, [[0, 4], [S.plug, 4], [S.power - 0.05, 10], [S.power + 0.2, 35, easeOutBack]]),
+    },
+    armR: {
+      a: track(t, [[0, -6], [S.reach, -6], [S.pickup - 0.1, -22], [S.pickup + 0.05, -22], [S.inspect + 0.1, -150], [8.0, -138], [S.insert, -150],
+        [S.plug + 0.14, -120, easeOutCubic], [S.power - 0.05, -110], [S.power + 0.2, -145, easeOutBack]])
+        + 0.4 * w.R.dx - spring(t, [[S.stand + 0.4, 8]], 14, 6),
+      e: track(t, [[0, -4], [S.reach, -4], [S.pickup - 0.1, 0], [S.pickup + 0.05, 0], [S.inspect + 0.1, -55], [8.0, -45], [S.insert, -55],
+        [S.plug + 0.14, -40], [S.power - 0.05, -30], [S.power + 0.2, -35, easeOutBack]]),
+    },
     face: faceAt(t),
-    // Eyes: drift while sad, snap to the glint, dart around while studying the plug.
-    lookX: track(t, [[0, -6], [1.8, 4], [3.2, -4], [S.glint, -4], [DOUBLE_TAKE, 24, easeOutCubic], [S.hops[2] + HOP, 22],
+    // Eyes: drift while sad, snap to the glint, look ahead while walking, dart around studying the plug.
+    lookX: track(t, [[0, -6], [1.8, 4], [3.2, -4], [S.glint, -4], [DOUBLE_TAKE, 24, easeOutCubic], [WALK_END, 22],
       [S.pickup, 12], [S.inspect, 6], [7.85, -8], [7.95, 10], [8.1, 4], [S.insert, 18], [S.plug, 0], [S.travel, 0], [S.travel + 0.2, 24]]),
-    lookY: track(t, [[0, 8], [S.glint, 8], [DOUBLE_TAKE, 0], [S.reach, 0], [S.pickup, 18], [S.inspect, -8], [7.85, -12], [S.insert, 10],
-      [S.plug, 0], [S.travel, 0], [S.travel + 0.2, 10]]),
+    lookY: track(t, [[0, 8], [S.glint, 8], [DOUBLE_TAKE, 0], [WALK.start, 0], [WALK.start + 0.3, 8], [WALK_END - 0.3, 8], [S.reach, 4], [S.pickup, 18],
+      [S.inspect, -8], [7.85, -12], [S.insert, 10], [S.plug, 0], [S.travel, 0], [S.travel + 0.2, 10]]),
     crtOpen,
     shiver: t >= S.plug && t < S.power ? 2.5 * Math.sin(t * 120)
       : powered ? 8 * Math.exp(-(t - S.power) * 5) * Math.sin(t * 95) : 0,
@@ -238,55 +263,88 @@ function robotPose(t: number): RobotPose {
   };
 }
 
-/** Little clouds of dust kicked up where it lands. */
+const mixArm = (a: Arm, b: Arm, p: number): Arm => ({ a: lerp(a.a, b.a, p), e: lerp(a.e, b.e, p) });
+
+/** Final pose at t (left applied to the robot): while plugging in, the right hand follows the plug. */
+function poseAt(t: number): RobotPose {
+  const pose = robotPose(t);
+  robot.apply(pose);
+  const guide = window01(t, S.insert, 0.12, S.plug, 0.12);
+  if (guide > 0) {
+    pose.armR = mixArm(pose.armR, robot.reachRight(plugPose(t).grip), easeInOutCubic(guide));
+    robot.apply(pose);
+  }
+  return pose;
+}
+
+/** Little puffs of dust where each foot lands. */
 function renderPuffs(t: number): void {
   puffs.forEach((c, k) => {
-    const land = landings[Math.floor(k / 8)], i = k % 8;
-    const age = t - land;
-    if (age < 0 || age > 0.6) { c.setAttribute('opacity', '0'); return; }
-    robot.apply(robotPose(land));
-    const [fx, fy] = robot.feet();
-    const side = i % 2 ? 1 : -1, sp = 120 + rand(k * 5 + 1) * 160;
-    const e = easeOutCubic(age / 0.6);
-    c.setAttribute('cx', String(fx + side * (70 + e * sp)));
-    c.setAttribute('cy', String(fy - 6 - e * (20 + rand(k * 3) * 40)));
-    c.setAttribute('r', String(8 + e * (14 + rand(k) * 12)));
-    c.setAttribute('opacity', String(0.55 * (1 - e)));
+    const n = Math.floor(k / 4), i = k % 4;
+    const land = footfalls[n], age = t - land;
+    if (age < 0 || age > 0.5) { c.setAttribute('opacity', '0'); return; }
+    poseAt(land);
+    const [fx, fy] = robot.foot(n % 2 ? 'R' : 'L');
+    const side = i % 2 ? 1 : -1, sp = 50 + rand(k * 5 + 1) * 70;
+    const e = easeOutCubic(age / 0.5);
+    c.setAttribute('cx', String(fx + side * (50 + e * sp)));
+    c.setAttribute('cy', String(fy - 4 - e * (10 + rand(k * 3) * 22)));
+    c.setAttribute('r', String(5 + e * (8 + rand(k) * 8)));
+    c.setAttribute('opacity', String(0.4 * (1 - e)));
   });
 }
 
 // ═══ Cable, plug and the light that travels along it ═══
 
 const add = (a: Vec, b: Vec): Vec => [a[0] + b[0], a[1] + b[1]];
+const sub = (a: Vec, b: Vec): Vec => [a[0] - b[0], a[1] - b[1]];
 const mul = (a: Vec, k: number): Vec => [a[0] * k, a[1] * k];
 const lerpV = (a: Vec, b: Vec, p: number): Vec => [lerp(a[0], b[0], p), lerp(a[1], b[1], p)];
 const angleOf = (d: Vec) => (Math.atan2(d[1], d[0]) * 180) / Math.PI;
 
 let plugFloor: Vec = [900, 1486];
+/** Where the plug's tip was, relative to the port, when the robot started guiding it in. */
+let insertFrom: Vec = [60, -200];
 const ANCHOR: Vec = [2300, 1440];   // the cable runs off to the right, towards the app
+const PLUG_SCALE = 0.9;
+const PLUG_LEN = 124;               // plug-local distance from the tip to where the cable leaves
+const HELD = 34;                    // the hand grips the plug this far (world) behind the tip
+// Plugging in: line up beside the socket, touch, a first push, then the shove home (clicks at S.plug).
+const AIM = S.insert + 0.27, TOUCH = AIM + 0.1, PUSH = TOUCH + 0.08;
 
-function robotPlugPose(t: number): { tip: Vec; dir: Vec } {
-  const hand = robot.rightHand();
-  const port = robot.port();
-  if (t < S.pickup - 0.15) return { tip: plugFloor, dir: [-1, 0] };
+interface PlugPose { tip: Vec; dir: Vec; depth: number; grip: Vec }
+/** The plug: lying on the floor, carried, then guided into the socket until it disappears inside. */
+function plugPose(t: number): PlugPose {
+  const held = (dir: Vec): PlugPose => {
+    const hand = robot.rightHand();
+    return { tip: add(hand, mul(dir, HELD)), dir, depth: 0, grip: hand };
+  };
+  if (t < S.pickup - 0.15) return { tip: plugFloor, dir: [-1, 0], depth: 0, grip: plugFloor };
   if (t < S.inspect) {
     const p = easeOutCubic(prog(t, S.pickup - 0.15, 0.15));
-    return { tip: lerpV(plugFloor, add(hand, [-14, 26]), p), dir: [-1, 0] };
+    const h = held([-1, 0]);
+    return { ...h, tip: lerpV(plugFloor, h.tip, p) };
   }
   if (t < S.insert) {
     const a = lerp(180, 270, easeInOutCubic(prog(t, S.inspect, 0.35))) * Math.PI / 180;  // "what is this?"
-    const dir: Vec = [Math.cos(a), Math.sin(a)];
-    return { tip: add(hand, mul(dir, 34)), dir };
+    return held([Math.cos(a), Math.sin(a)]);
   }
-  const a = lerp(270, 180, easeInOutCubic(prog(t, S.insert, 0.3))) * Math.PI / 180;
+  const port = robot.port();
+  const a = lerp(270, 180, easeInOutCubic(prog(t, S.insert, AIM - S.insert))) * Math.PI / 180;
   const dir: Vec = [Math.cos(a), Math.sin(a)];
-  return { tip: lerpV(add(hand, mul(dir, 34)), port, easeInOutCubic(prog(t, S.insert, S.plug - S.insert))), dir };
+  const depth = t < PUSH ? 0 : track(t, [[PUSH, 0], [PUSH + 0.08, 55, easeOutCubic], [S.plug - 0.07, 55], [S.plug, PLUG_LEN, easeInCubic]]);
+  const tip = t < AIM ? add(port, lerpV(insertFrom, [44, 0], easeInOutCubic(prog(t, S.insert, AIM - S.insert))))
+    : t < TOUCH ? add(port, [lerp(44, 0, easeInOutCubic(prog(t, AIM, TOUCH - AIM))), 0])
+    : add(port, mul(dir, PLUG_SCALE * depth));
+  // The hand holds the plug's body, sliding back as it goes in, and finally presses at the socket.
+  const grip = add(tip, mul(dir, -PLUG_SCALE * Math.max(HELD / PLUG_SCALE, depth + 18)));
+  return { tip, dir, depth, grip };
 }
 
 /** Cable from the back of the plug to the far anchor (cubic Bézier, sagging under gravity). */
 function cableCurve(t: number): [Vec, Vec, Vec, Vec] {
-  const pose = robotPlugPose(t);
-  const back = add(pose.tip, mul(pose.dir, -124 * 0.9));
+  const pose = plugPose(t);
+  const back = add(pose.tip, mul(pose.dir, -PLUG_LEN * PLUG_SCALE));
   const c1 = add(add(back, mul(pose.dir, -150)), [0, 90]);
   const c2 = add(ANCHOR, [-500, 60]);
   return [back, c1, c2, ANCHOR];
@@ -301,7 +359,7 @@ const bezier = ([p0, p1, p2, p3]: [Vec, Vec, Vec, Vec], u: number): Vec => {
 
 /** World position of the light: forms on the face, drops to the port, runs down the cable. */
 function orbWorld(t: number): Vec {
-  robot.apply(robotPose(t));
+  poseAt(t);
   const face = robot.faceCenter();
   const port = robot.port();
   if (t < S.travel) return lerpV(face, port, easeInOutCubic(prog(t, S.orb + 0.05, S.travel - S.orb - 0.05)));
@@ -309,8 +367,10 @@ function orbWorld(t: number): Vec {
 }
 
 function renderCable(t: number): void {
-  const pose = robotPlugPose(t);
-  robotPlug.setAttribute('transform', `translate(${pose.tip[0]} ${pose.tip[1]}) rotate(${angleOf(pose.dir)}) scale(0.9)`);
+  const pose = plugPose(t);
+  robotPlug.setAttribute('transform', `translate(${pose.tip[0]} ${pose.tip[1]}) rotate(${angleOf(pose.dir)}) scale(${PLUG_SCALE})`);
+  // Whatever has gone into the socket is hidden: only the part outside it is drawn.
+  plugClip.setAttribute('width', String(Math.max(0, 600 - pose.depth)));
   const [b, c1, c2, a] = cableCurve(t);
   const d = `M${b[0]} ${b[1]} C${c1[0]} ${c1[1]} ${c2[0]} ${c2[1]} ${a[0]} ${a[1]}`;
   for (const p of cablePaths) p.setAttribute('d', d);
@@ -323,14 +383,14 @@ function renderCable(t: number): void {
   plugHalo.setAttribute('opacity', String(t >= S.glint && t < S.pickup ? 0.25 + 0.2 * Math.sin(t * 6) : 0));
   plugHalo.setAttribute('transform', 'translate(-60 0)');
 
-  // Sparks fly from the port when it clicks in.
+  // Sparks fly from the socket when it clicks in.
   const sp = t - S.plug;
   const port = robot.port();
   sparks.forEach((l, i) => {
     const life = 0.25 + rand(i * 13) * 0.35;
     if (sp < 0 || sp > life) { l.setAttribute('opacity', '0'); return; }
-    const ang = (-150 + rand(i * 7 + 1) * 200) * Math.PI / 180, v = 380 + rand(i * 3 + 2) * 520;
-    const at = (s: number): Vec => [port[0] + Math.cos(ang) * v * s, port[1] + Math.sin(ang) * v * s + 900 * s * s];
+    const ang = (-110 + rand(i * 7 + 1) * 160) * Math.PI / 180, v = 380 + rand(i * 3 + 2) * 520;
+    const at = (s: number): Vec => [port[0] + 10 + Math.cos(ang) * v * s, port[1] + Math.sin(ang) * v * s + 900 * s * s];
     const [x0, y0] = at(Math.max(0, sp - 0.035)), [x, y] = at(sp);
     l.setAttribute('x1', String(x0)); l.setAttribute('y1', String(y0)); l.setAttribute('x2', String(x)); l.setAttribute('y2', String(y));
     l.setAttribute('stroke-width', String(4 + rand(i) * 4));
@@ -341,9 +401,9 @@ function renderCable(t: number): void {
 // ═══ Camera ═══
 
 const CAM: Record<'cx' | 'cy' | 's', Key[]> = {
-  cx: [[0, 470], [3.7, 430], [4.3, 560], [S.hops[0], 560], [S.hops[2] + HOP, 700], [S.plug, 720], [S.power, 720]],
+  cx: [[0, 470], [3.7, 430], [4.3, 560], [WALK.start, 560], [WALK_END, 700], [S.plug, 720], [S.power, 720]],
   cy: [[0, 1150], [3.7, 1170], [S.plug, 1150], [S.power, 1150], [S.travel, 1180]],
-  s: [[0, 1.18], [3.7, 1.3], [S.stand, 1.22], [S.hops[2] + HOP, 1.3], [S.plug - 0.4, 1.42], [S.power, 1.42], [S.whip, 1.15]],
+  s: [[0, 1.18], [3.7, 1.3], [S.stand, 1.22], [WALK_END, 1.3], [S.plug - 0.4, 1.42], [S.power, 1.42], [S.whip, 1.15]],
 };
 function camera(t: number): { cx: number; cy: number; s: number } {
   let cx = track(t, CAM.cx), cy = track(t, CAM.cy);
@@ -365,7 +425,7 @@ function renderStory(t: number): void {
   const cam = camera(t);
   world.style.transform = `translate(540px, 960px) scale(${cam.s}) translate(${-cam.cx}px, ${-cam.cy}px)`;
   renderPuffs(t);
-  robot.apply(robotPose(t));
+  poseAt(t);
   renderCable(t);
 
   fogA.style.transform = `translate(${-300 + Math.sin(t * 0.15) * 120}px, ${1100 + Math.cos(t * 0.11) * 60}px)`;
@@ -420,7 +480,7 @@ function renderFrame(t: number): void {
     orb.style.opacity = String(clamp01(prog(t, S.orb, 0.1)) * (1 - prog(t, S.arrive - 0.03, 0.08)));
   }
   // Measuring the light's path re-poses the robot at other times; put this frame's pose back.
-  if (w < 1) robot.apply(robotPose(Math.min(t, S.whip + WHIP)));
+  if (w < 1) poseAt(Math.min(t, S.whip + WHIP));
 }
 
 // ═══ Boot ═══
@@ -428,10 +488,13 @@ function renderFrame(t: number): void {
 async function init(): Promise<void> {
   await brag.init();
   await document.fonts.ready;
-  // The plug lies where the robot's hand will reach for it.
-  robot.apply(robotPose(S.pickup - 0.1));
+  // The plug lies where the robot's hand will reach for it…
+  poseAt(S.pickup - 0.1);
   const hand = robot.rightHand();
   plugFloor = [hand[0] - 14, 1486];
+  // …and is guided into the socket from wherever the hand held it.
+  poseAt(S.insert - 1e-6);
+  insertFrom = sub(plugPose(S.insert - 1e-6).tip, robot.port());
   renderFrame(0);
 }
 

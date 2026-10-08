@@ -95,7 +95,13 @@ function wind(ctx: BaseAudioContext, out: AudioNode): void {
 const SFX: Record<Sfx, Fx> = {
   sigh: (c, o, t) => tone(c, o, t, 'sine', 420, 250, 0.7, 0.13, 0.12, 0.7),
   glint: (c, o, t) => { tone(c, o, t, 'sine', 2637, 2637, 0.1, 0.05, 0.005, 0.7); tone(c, o, t + 0.07, 'sine', 3951, 3951, 0.1, 0.035, 0.005, 0.6); },
-  boop: (c, o, t) => tone(c, o, t - 0.02, 'sine', 240, 430, 0.08, 0.13, 0.01, 0.16),
+  // A small metal foot on a hard floor: a soft thud with a tinny tick, plus a whisper of servo.
+  step: (c, o, t) => {
+    const k = Math.round((t % 1) * 1000);
+    tone(c, o, t, 'sine', 150 + rand(k) * 30, 85, 0.06, 0.16, 0.003, 0.09);
+    noise(c, o, t, 0.025, 'bandpass', 3200 + rand(k + 1) * 900, 2600, 3, 0.05, 0.002);
+    tone(c, o, t - 0.16, 'square', 520, 640, 0.12, 0.006, 0.03, 0.1);
+  },
   pickup: (c, o, t) => tone(c, o, t, 'triangle', 880, 1320, 0.09, 0.07, 0.01, 0.25),
   click: (c, o, t) => { noise(c, o, t, 0.03, 'highpass', 2500, 2500, 0.7, 0.3, 0.002); tone(c, o, t, 'sine', 140, 70, 0.05, 0.25, 0.003, 0.08); },
   sparks: (c, o, t) => {

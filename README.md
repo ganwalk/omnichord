@@ -102,7 +102,9 @@ NODE_PATH="$(npm root -g)" npm run promo -- --video story   # vídeo da históri
 NODE_PATH="$(npm root -g)" npm run promo -- --video story --stills 12,20   # quadros soltos
 ```
 
-O robô da história (`promo/lib/robot.ts`) é um boneco vetorial articulado com a
+O robô da história (`promo/lib/robot.ts`) é um boneco vetorial articulado (pernas e
+braços com joelho/cotovelo e cinemática inversa, para andar e alcançar; vira de
+frente para três-quartos ao caminhar) com a
 mesma tela CRT do ícone; as expressões ficam em `promo/lib/face.ts`. A
 demonstração do app (`promo/brag.ts`) é compartilhada pelos dois vídeos.
 

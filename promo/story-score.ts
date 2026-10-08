@@ -10,7 +10,13 @@ export const FPS = 30;
 /** Story time = demo time + OFFSET: the face lands exactly when the demo's app powers on. */
 export const OFFSET = 6.8;
 export const DURATION = 32 + OFFSET;
-export const HOP = 0.6;
+/** The walk to the plug: a few short, careful robot steps (alternating feet, near foot first). */
+export const WALK = { start: 5.0, steps: 6, step: 0.27, from: 380, to: 680 } as const;
+export const WALK_END = WALK.start + WALK.steps * WALK.step;
+/** Fraction of a step the moving foot is in the air. */
+export const SWING = 0.82;
+/** Times a foot touches down. */
+export const footfalls = Array.from({ length: WALK.steps }, (_, k) => WALK.start + (k + SWING) * WALK.step);
 
 /** Story beats (seconds). */
 export const S = {
@@ -18,7 +24,6 @@ export const S = {
   sigh: 3.5,
   glint: 3.9,
   stand: 4.6,
-  hops: [5.0, 5.6, 6.2],
   reach: 6.95,
   pickup: 7.45,
   inspect: 7.65,
@@ -42,11 +47,11 @@ export const demoPlucks: PluckEv[] = DEMO.plucks.filter(p => p.t >= DEMO.T.power
 export const demoHits: HitEv[] = DEMO.hits.map(shift);
 export const demoChordOff = DEMO.T.chordOff + OFFSET;
 
-export type Sfx = 'glint' | 'boop' | 'pickup' | 'click' | 'sparks' | 'buzz' | 'powerup' | 'whoosh' | 'sigh' | 'transmit' | 'arrive';
+export type Sfx = 'glint' | 'step' | 'pickup' | 'click' | 'sparks' | 'buzz' | 'powerup' | 'whoosh' | 'sigh' | 'transmit' | 'arrive';
 export const sfx: [t: number, kind: Sfx][] = [
   [S.sigh, 'sigh'],
   [S.glint, 'glint'],
-  ...S.hops.map(h => [h + HOP, 'boop'] as [number, Sfx]),
+  ...footfalls.map(f => [f, 'step'] as [number, Sfx]),
   [S.pickup, 'pickup'],
   [S.plug, 'click'],
   [S.plug, 'sparks'],
