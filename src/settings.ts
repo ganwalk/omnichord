@@ -9,6 +9,8 @@ export interface Settings {
   strumVol: number;  // 0–1
   tone: number;      // 0–1
   reverb: number;    // 0–1
+  /** Portamento between chords: 0 = off, 1 = slowest slide. */
+  glide: number;     // 0–1
   rhythmVol: number; // 0–1
   arpVol: number;    // 0–1
   arpSpeed: number;  // 0–1
@@ -26,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   strumVol: 0.8,
   tone: 0.5,
   reverb: 0.2,
+  glide: 0,
   rhythmVol: 0.55,
   arpVol: 0.75,
   arpSpeed: 0.5,
@@ -44,3 +47,6 @@ export const toneToCutoff = (tone: number): number => 400 + tone * 8000;
 
 /** Reverb knob → [dry, wet] gains. */
 export const reverbMix = (reverb: number): [number, number] => [1 - reverb * 0.5, reverb * 0.5];
+
+/** Glide knob → chord-to-chord slide time in seconds (0 = off). */
+export const glideTime = (glide: number): number => glide * 0.5;

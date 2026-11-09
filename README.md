@@ -8,6 +8,7 @@ offline) e empacotado como app nativo Android/iOS com Capacitor.
 ## Recursos
 
 - 72 acordes (maior, menor, 7, m7, Maj7, °7) e strumplate de 4 oitavas
+- **Glide**: os acordes deslizam de um para o outro (portamento ajustável, 0 = desligado)
 - 7 ritmos e arpejador com 7 modos, sincronizados no mesmo relógio
 - **Tom**: destaca os acordes do campo harmônico escolhido
 - **REC**: grava o que você toca e baixa/compartilha o áudio (WebM ou M4A)

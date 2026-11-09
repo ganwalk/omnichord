@@ -76,3 +76,18 @@ describe('detectLang', () => {
     expect(detectLang(['de-DE'])).toBe('en');
   });
 });
+
+describe('glide', () => {
+  it('slides each note from the matching note of the previous chord', async () => {
+    const { glideSources } = await import('../src/audio/instruments');
+    // C → G7: the extra 7th slides from the top note of C.
+    expect(glideSources([60, 64, 67], [55, 59, 62, 65])).toEqual([60, 64, 67, 67]);
+    expect(glideSources([55, 59, 62, 65], [60, 64, 67])).toEqual([55, 59, 62]);
+  });
+
+  it('is off by default and kept when valid', () => {
+    expect(DEFAULT_SETTINGS.glide).toBe(0);
+    expect(sanitizeSettings({ glide: 0.4 }).glide).toBe(0.4);
+    expect(sanitizeSettings({ glide: 3 }).glide).toBe(1);
+  });
+});

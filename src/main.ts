@@ -11,7 +11,7 @@ import { hapticTap, setupNativeChrome } from './platform/native';
 import { registerServiceWorker } from './platform/pwa';
 import { ScreenWakeLock } from './platform/wakeLock';
 import { Sequencer } from './sequencer';
-import { type Settings } from './settings';
+import { glideTime, type Settings } from './settings';
 import { loadSettings, saveSettings } from './storage';
 import { NOTE_NAMES, diatonicChords, distinctStringIndices, keyName, strumMidi, type ChordType } from './theory';
 import { ChordGrid, pageOf } from './ui/chordGrid';
@@ -84,7 +84,7 @@ function selectChord(root: number, type: ChordType): void {
   // A keyboard shortcut may pick a chord on the hidden page of a compact layout.
   if (grid.page !== pageOf(type)) setPage(pageOf(type));
   setDisplay(NOTE_NAMES[root] + type.sym, NOTE_NAMES[root], type.sym);
-  chordVoice.play(root, type.intervals, settings.octave);
+  chordVoice.play(root, type.intervals, settings.octave, undefined, glideTime(settings.glide));
   rebuildStrumNotes();
   robot.event('chord');
 }
@@ -302,7 +302,7 @@ function initTools(): void {
 
 // ═══ Controls ═══
 
-type UnitKey = 'master' | 'chordVol' | 'strumVol' | 'tone' | 'reverb' | 'rhythmVol' | 'arpVol' | 'arpSpeed';
+type UnitKey = 'master' | 'chordVol' | 'strumVol' | 'tone' | 'reverb' | 'glide' | 'rhythmVol' | 'arpVol' | 'arpSpeed';
 
 function initControls(): void {
   // 0–100 sliders mapped to 0–1 settings.

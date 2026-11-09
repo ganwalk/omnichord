@@ -17,22 +17,45 @@ function noiseBurst(eng: AudioEngine, dest: AudioNode, t: number, dur: number): 
 
 interface Voice { osc: OscillatorNode; gain: GainNode }
 
+/** Where each new note slides from: the matching note of the previous chord. */
+export function glideSources(prev: readonly number[], next: readonly number[]): number[] {
+  return next.map((_, i) => prev[Math.min(i, prev.length - 1)]);
+}
+
 export class ChordVoice {
   private voices: Voice[] = [];
+  /** MIDI notes of the sounding chord, the starting point of a glide. */
+  private sounding: { notes: number[]; bass: number } | null = null;
 
   constructor(private readonly eng: AudioEngine) {}
 
-  /** Start the chord now, or at audio time `when` (offline rendering). */
-  play(root: number, intervals: readonly number[], octave: number, when?: number): void {
-    this.stop(when);
+  /**
+   * Start the chord now, or at audio time `when` (offline rendering).
+   * With `glide` > 0 seconds and a chord already sounding, every note slides
+   * from the previous chord's matching note instead of starting on pitch.
+   */
+  play(root: number, intervals: readonly number[], octave: number, when?: number, glide = 0): void {
+    const prev = this.sounding;
+    this.release(when);
     const ctx = this.eng.ctx, t = when ?? ctx.currentTime;
     const notes = chordMidi(root, intervals, 3 + octave);
     const bass = notes[0] - 12;
+    const slide = glide > 0 && prev !== null;
+    const from = slide ? glideSources(prev.notes, notes) : notes;
+    const bassFrom = slide ? prev.bass : bass;
+    this.sounding = { notes, bass };
 
-    const add = (freq: number, type: OscillatorType, amp: number): void => {
+    const add = (midi: number, fromMidi: number, ratio: number, type: OscillatorType, amp: number): void => {
       const osc = ctx.createOscillator(), gain = ctx.createGain();
       osc.type = type;
-      osc.frequency.value = freq;
+      const freq = midiToFreq(midi) * ratio;
+      if (fromMidi !== midi) {
+        // Exponential ramp = constant speed in pitch, like a real portamento.
+        osc.frequency.setValueAtTime(midiToFreq(fromMidi) * ratio, t);
+        osc.frequency.exponentialRampToValueAtTime(freq, t + glide);
+      } else {
+        osc.frequency.value = freq;
+      }
       gain.gain.setValueAtTime(0, t);
       gain.gain.linearRampToValueAtTime(amp, t + 0.04);
       osc.connect(gain).connect(this.eng.buses.chord);
@@ -40,18 +63,22 @@ export class ChordVoice {
       this.voices.push({ osc, gain });
     };
 
-    const harmonic = (f: number, h: number, amp: number): void =>
-      add(f * h, h === 2 || h === 3 ? 'triangle' : 'sine', amp / (h * 0.7 + 0.3));
+    const harmonic = (midi: number, fromMidi: number, h: number, amp: number): void =>
+      add(midi, fromMidi, h, h === 2 || h === 3 ? 'triangle' : 'sine', amp / (h * 0.7 + 0.3));
 
-    for (const midi of notes) {
-      const f = midiToFreq(midi);
-      for (const h of [1, 2, 3, 4, 6]) harmonic(f, h, 0.09);
-      add(f * 1.0035, 'sine', 0.035); // slight detune for chorus
-    }
-    for (const h of [1, 2]) harmonic(midiToFreq(bass), h, 0.16);
+    notes.forEach((midi, i) => {
+      for (const h of [1, 2, 3, 4, 6]) harmonic(midi, from[i], h, 0.09);
+      add(midi, from[i], 1.0035, 'sine', 0.035); // slight detune for chorus
+    });
+    for (const h of [1, 2]) harmonic(bass, bassFrom, h, 0.16);
   }
 
   stop(when?: number): void {
+    this.sounding = null;
+    this.release(when);
+  }
+
+  private release(when?: number): void {
     if (this.voices.length === 0) return;
     const t = when ?? this.eng.ctx.currentTime;
     for (const { osc, gain } of this.voices) {

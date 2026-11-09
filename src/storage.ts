@@ -11,7 +11,7 @@ const KEY = 'omniharp:settings:v1';
 const LEGACY_KEY = 'omnisound:settings:v1';
 const SAVE_DELAY_MS = 300;
 
-const UNIT_KEYS = ['master', 'chordVol', 'strumVol', 'tone', 'reverb', 'rhythmVol', 'arpVol', 'arpSpeed'] as const;
+const UNIT_KEYS = ['master', 'chordVol', 'strumVol', 'tone', 'reverb', 'glide', 'rhythmVol', 'arpVol', 'arpSpeed'] as const;
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
