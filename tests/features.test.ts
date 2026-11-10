@@ -63,8 +63,10 @@ describe('sanitizeSettings', () => {
     expect(s.tone).toBe(DEFAULT_SETTINGS.tone);
   });
   it('keeps valid values', () => {
-    const s = sanitizeSettings({ reverb: 0.4, bpm: 90, octave: -1, pattern: 'Waltz', key: 7 });
-    expect(s).toMatchObject({ reverb: 0.4, bpm: 90, octave: -1, pattern: 'Waltz', key: 7 });
+    const s = sanitizeSettings({ reverb: 0.4, bpm: 90, octave: -2, pattern: 'Waltz', key: 7 });
+    expect(s).toMatchObject({ reverb: 0.4, bpm: 90, octave: -2, pattern: 'Waltz', key: 7 });
+    expect(sanitizeSettings({ octave: 2 }).octave).toBe(2);
+    expect(sanitizeSettings({ octave: 1.5 }).octave).toBe(DEFAULT_SETTINGS.octave);
   });
 });
 

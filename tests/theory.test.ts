@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { CHORD_TYPES, STRING_COUNT, STRUM_SPAN, distinctStringIndices, midiToFreq, noteName, strumMidi } from '../src/theory';
 
 describe('strumMidi', () => {
-  it.each([-1, 0, 1])('keeps every chord within ~4 octaves and below 7 kHz (octave %i)', oct => {
+  // Two octaves up, the top strings reach ~10.5 kHz; everywhere else they stay below 7 kHz.
+  it.each([[-2, 7000], [-1, 7000], [0, 7000], [1, 7000], [2, 11000]])('keeps every chord within ~4 octaves (octave %i, below %i Hz)', (oct, maxHz) => {
     for (const type of CHORD_TYPES) {
       for (let root = 0; root < 12; root++) {
         const notes = strumMidi(root, type.intervals, oct);
         expect(notes).toHaveLength(STRING_COUNT);
         expect(notes.at(-1)! - notes[0]).toBeLessThanOrEqual(STRUM_SPAN + 6);
-        expect(midiToFreq(notes.at(-1)!)).toBeLessThan(7000);
+        expect(midiToFreq(notes.at(-1)!)).toBeLessThan(maxHz);
+        expect(midiToFreq(notes[0])).toBeGreaterThan(30);
       }
     }
   });

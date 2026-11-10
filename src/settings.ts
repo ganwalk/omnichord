@@ -15,7 +15,8 @@ export interface Settings {
   arpVol: number;    // 0–1
   arpSpeed: number;  // 0–1
   bpm: number;
-  octave: -1 | 0 | 1;
+  /** Transpose chord and strumplate by whole octaves, OCTAVE_MIN…OCTAVE_MAX. */
+  octave: -2 | -1 | 0 | 1 | 2;
   pattern: string;
   arpMode: string;
   /** Highlighted key (root of the major key, 0–11), or null for none. */
@@ -38,6 +39,9 @@ export const DEFAULT_SETTINGS: Settings = {
   arpMode: ARP_MODE_NAMES[0],
   key: null,
 };
+
+export const OCTAVE_MIN = -2;
+export const OCTAVE_MAX = 2;
 
 export const BPM_MIN = 40;
 export const BPM_MAX = 220;

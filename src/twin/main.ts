@@ -10,7 +10,7 @@ import { AudioEngine } from '../audio/engine';
 import { ChordVoice, drum, pluck } from '../audio/instruments';
 import { PATTERNS, findPattern } from '../patterns';
 import { Sequencer } from '../sequencer';
-import { BPM_MAX, BPM_MIN, glideTime, type Settings } from '../settings';
+import { BPM_MAX, BPM_MIN, OCTAVE_MAX, OCTAVE_MIN, glideTime, type Settings } from '../settings';
 import { loadSettings, saveSettings } from '../storage';
 import {
   CHORD_TYPES, NOTE_NAMES, diatonicChords, distinctStringIndices, keyName, strumMidi, type ChordType,
@@ -439,7 +439,7 @@ function setKey(key: number | null): void {
 }
 
 function setOctave(delta: 1 | -1): void {
-  const o = Math.max(-1, Math.min(1, settings.octave + delta)) as Settings['octave'];
+  const o = Math.max(OCTAVE_MIN, Math.min(OCTAVE_MAX, settings.octave + delta)) as Settings['octave'];
   settings.octave = o;
   saveSettings(settings);
   flash(`OCT ${o > 0 ? '+' : ''}${o}`);
