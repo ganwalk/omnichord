@@ -123,8 +123,8 @@ const guides = [];  // {type:'rect'|'circle'|'line'|'robot'|'seg', ..., role, fi
 
 const rect = (x, y, w, h, r = 0) => cuts.push({ type: 'rect', x, y, w, h, r });
 const circle = (cx, cy, d) => cuts.push({ type: 'circle', cx, cy, r: d / 2 });
-const text = (x, y, t, s = 2.6, anchor = 'middle', weight = 'normal') =>
-  texts.push({ x, y, t, s, anchor, weight });
+const text = (x, y, t, s = 2.6, anchor = 'middle', weight = 'normal', spacing = 0) =>
+  texts.push({ x, y, t, s, anchor, weight, spacing });
 
 // Panel outline, seam between the two panel parts, mounting holes
 rect(0, 0, W, H);
@@ -136,8 +136,8 @@ for (const [x1, x2] of [[0, seamX], [seamX, W]]) {
   for (const x of [x1 + MOUNT_INSET, x2 - MOUNT_INSET]) circle(x, H / 2, MOUNT_D);
 }
 
-// Top band: power · two identical OLED screens (robot, chord) · brand + status
-// LEDs · MENU encoder (cols 9–11). The screens are spaced by their boards,
+// Top band: power · two identical OLED screens (robot, chord) · OMNIHARP
+// wordmark · MENU encoder. The screens are spaced by their boards,
 // which are much larger than the visible glass.
 const dispY = topY0 + 5, dispMid = dispY + OLED_WIN[1] / 2, dispLabelY = dispY + OLED_WIN[1] + 6;
 circle(M + LABEL_W / 2, dispMid - 3, POWER_D);
@@ -158,18 +158,15 @@ const scr2 = scr1 + (OLED_MODULE[0] + OLED_GAP) / P;
 screen(scr1, 'SYS MONITOR', 'robot');
 screen(scr2, 'CHORD DISPLAY', 'seg');
 
-const brandCol = (scr2 + OLED_MODULE[0] / 2 / P + 10.5 - ENCODER_KNOB_R / P) / 2;
-text(colX(brandCol), dispMid - 3, 'OMNIHARP', 6.5, 'middle', 'bold');
-text(colX(brandCol), dispMid + 2.5, 'CHORD SYNTH · GANWALK', 2.3);
-['BEAT', 'MIDI'].forEach((lbl, i) => {
-  const x = colX(brandCol - 0.65 + i * 1.3);
-  circle(x, dispMid + 10, LED_D);
-  text(x, dispLabelY, lbl, 2.2);
-});
+// Encoder flush with the right edge of the grid; the wordmark alone, centred
+// in the space between the chord display and the encoder.
+const encX = colX(12) - ENCODER_KNOB_R;
+circle(encX, dispMid, ENCODER_D);
+guides.push({ type: 'circle', cx: encX, cy: dispMid, r: ENCODER_KNOB_R, role: 'knob' });
+text(encX, dispLabelY, 'MENU · PUSH', 2.3);
 
-circle(colX(10.5), dispMid, ENCODER_D);
-guides.push({ type: 'circle', cx: colX(10.5), cy: dispMid, r: ENCODER_KNOB_R, role: 'knob' });
-text(colX(10.5), dispLabelY, 'MENU · PUSH', 2.3);
+const brandX = (colX(scr2) + OLED_WIN[0] / 2 + encX - ENCODER_KNOB_R) / 2;
+text(brandX, dispMid + 2.4, 'OMNIHARP', 6.5, 'middle', '900', 0.8);
 
 // Slider row + function row, by group
 const slotTop = sliderY0 + 9;
@@ -180,6 +177,8 @@ const fnKeyY = fnY0 + 7 + CAP / 2;
 for (const g of GROUPS) {
   const x1 = colX(g.from) + 0.8, x2 = colX(g.to + 1) - 0.8;
   text((x1 + x2) / 2, sliderY0 + 4.5, g.title, 2.3, 'middle', 'bold');
+  // Tempo pulse LED beside the RHYTHM title (MIDI activity shows on the SYS MONITOR)
+  if (g.title === 'RHYTHM') circle((x1 + x2) / 2 + 9, sliderY0 + 3.7, LED_D - 0.5);
 
   for (const [col, label] of g.sliders) {
     const x = colX(col);
@@ -318,7 +317,7 @@ function svg(visual) {
   <g class="cut">${cuts.slice(1).map(cutSvg).join('\n')}</g>
   <g class="guides">${guides.map(g => guideSvg(g, visual)).join('\n')}</g>
   <rect class="cut" x="0" y="0" width="${f(W)}" height="${f(H)}" style="fill:none"/>
-  <g>${texts.map(t => `<text class="silk" x="${f(t.x)}" y="${f(t.y)}" style="font-size:${t.s}px;text-anchor:${t.anchor};font-weight:${t.weight}">${esc(t.t)}</text>`).join('\n')}</g>
+  <g>${texts.map(t => `<text class="silk" x="${f(t.x)}" y="${f(t.y)}" style="font-size:${t.s}px;text-anchor:${t.anchor};font-weight:${t.weight};letter-spacing:${t.spacing}px">${esc(t.t)}</text>`).join('\n')}</g>
 </g>
 <line class="scale-line" x1="${OX}" y1="${scaleY}" x2="${OX + 100}" y2="${scaleY}"/>${ticks}
 <text class="scale" x="${OX}" y="${scaleY + 4}">100 mm — measure to confirm the print is at 100%</text>

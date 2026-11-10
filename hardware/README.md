@@ -49,8 +49,9 @@ Duas zonas, e cada uma é uma parte do painel:
 
 - **Esquerda (controles):** tudo segue as 12 colunas das teclas (19,05 mm), então
   os controles têm exatamente a largura da grade de acordes. De cima para baixo:
-  1. POWER, as duas telas (SYS MONITOR e CHORD DISPLAY), a marca com os LEDs
-     BEAT/MIDI e o encoder MENU (colunas 10–12).
+  1. POWER, as duas telas (SYS MONITOR e CHORD DISPLAY), a marca OMNIHARP e o
+     encoder MENU, encostado na borda direita da grade. O LED do tempo fica ao
+     lado do título RHYTHM; a atividade MIDI aparece no SYS MONITOR.
   2. Sliders em três grupos: MIXER (colunas 1–6), RHYTHM (7–9) e ARPEGGIATOR (10–12).
   3. Teclas de função, cada uma embaixo do grupo dela. A tecla de liga/desliga
      de cada grupo (PLAY, ARP) fica na ponta direita, mais perto da mão que
