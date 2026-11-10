@@ -39,7 +39,7 @@ const P = 19.05;           // key pitch (MX standard); every control column uses
 const KEY_CUT = 14;        // MX plate cut-out (square)
 const CAP = 18;            // keycap footprint, guide only (DSA/XDA ≈ 18 mm)
 const LABEL_W = 30;        // column left of the grid: power button, row labels
-const GAP = 16;            // between the left zone and the right column (panel seam in the middle)
+const GAP = 24;            // between the left zone and the right column: room for the seam rail underneath
 
 const STRUM_N = 24;        // strings (theory.ts STRING_COUNT)
 const STRUM_W = 110;       // strumplate window width (string length)
@@ -69,8 +69,16 @@ const GRILLE_PITCH = 6;
 const MOUNT_D = 3.6;           // M3 clearance holes to screw the panel to the wood
 const MOUNT_INSET = 6;
 
-const FRAME_SIDE = 15;     // visible wood, front and back rails (guide)
-const FRAME_CHEEK = 30;    // visible wood, end cheeks (guide)
+// Wood frame and enclosure. The panel drops into the frame and sits 1.5 mm
+// below its top edge, resting and screwed on cleats glued inside the walls.
+const FRAME_T = 20;        // board thickness = visible wood width, the same on all four sides
+const FRAME_H = 55;        // CHECK: frame height; sets the room under the panel
+const BASE_T = 9;          // plywood base, set into a rebate at the bottom of the frame
+const PANEL_T = 1.6;       // FR4 panel (the MDF mock-up is 3 mm)
+const PANEL_RECESS = 1.5;  // panel top below the wood's top edge
+const CLEAT = [10, 15];    // cleat width (under the panel edge) × height
+const RAIL_W = 16;         // cross rail under the seam between the two panel parts
+const INNER_H = FRAME_H - PANEL_RECESS - PANEL_T - BASE_T; // room between the base and the panel
 
 // From the app (src/theory.ts) so the panel matches the screen.
 const NOTE_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
@@ -152,7 +160,7 @@ const screen = (col, label, guide) => {
   guides.push({ type: guide, x: colX(col), y: dispMid });
   text(colX(col), dispLabelY, label, 2.3);
 };
-const powerEdge = M + LABEL_W / 2 + POWER_D / 2 + 1;               // right edge of the power button + 1 mm
+const powerEdge = M + LABEL_W / 2 + POWER_D / 2 + 3;               // power button body + 2 mm clearance
 const scr1 = (powerEdge + OLED_MODULE[0] / 2 - gridX0) / P;        // in columns
 const scr2 = scr1 + (OLED_MODULE[0] + OLED_GAP) / P;
 screen(scr1, 'SYS MONITOR', 'robot');
@@ -235,13 +243,79 @@ for (let i = 0; i < STRUM_N; i++) {
 text(strumX0 + STRUM_W / 2, strumY0 - 1.6, 'STRUMPLATE · HIGH ▲', 2.2);
 text(strumX0 + STRUM_W / 2, H - 4, '▼ LOW', 2.3);
 
+// ── What sits under the panel ───────────────────────────────────────────────
+// Boxes in panel coordinates (x, y as above) and height z above the base
+// (0 = top of the base, INNER_H = underside of the panel). Sizes are typical
+// for the parts named in the README; the CHECK values decide the real fit.
+
+const parts = [];  // {name, x, y, w, d, z0, z1, kind}
+const part = (name, x, y, w, d, z0, z1, kind = 'elec') => parts.push({ name, x, y, w, d, z0, z1, kind });
+const UNDER = INNER_H;     // panel underside
+
+// Wood: cleats along the four walls, rail under the seam
+part('Cleat, back', 0, 0, W, CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood');
+part('Cleat, front', 0, H - CLEAT[0], W, CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood');
+part('Cleat, left', 0, CLEAT[0], CLEAT[0], H - 2 * CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood');
+part('Cleat, right', W - CLEAT[0], CLEAT[0], CLEAT[0], H - 2 * CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood');
+part('Seam rail', seamX - RAIL_W / 2, CLEAT[0], RAIL_W, H - 2 * CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood');
+
+// Hanging from the panel
+part('Power button', M + LABEL_W / 2 - 9, dispMid - 3 - 9, 18, 18, UNDER - 28, UNDER);
+for (const [col, name] of [[scr1, 'OLED (robot)'], [scr2, 'OLED (chord)']]) {
+  part(name, colX(col) - OLED_MODULE[0] / 2, dispMid - OLED_MODULE[1] / 2, OLED_MODULE[0], OLED_MODULE[1], UNDER - 14, UNDER);
+}
+part('Encoder', encX - 7, dispMid - 7, 14, 14, UNDER - 15, UNDER);   // EC11-type, nut on the panel
+part('Slider board', gridX0 - 3, slotTop - 9, gridW + 5, slotBottom - slotTop + 18, UNDER - 16, UNDER);
+part('Key board (84 keys)', gridX0 - 3, fnKeyY - 11, gridW + 5, gridY0 + 6 * P + 1 - (fnKeyY - 11), UNDER - 9, UNDER);
+part('Strumplate + acrylic', strumX0 - 1, strumY0 - 1, STRUM_W + 2, strumH + 2, UNDER - 3, UNDER);
+part('MPR121 #1', strumX0 + 4, strumY0 + strumH / 3 - 10, 26, 20, UNDER - 15, UNDER - 3);
+part('MPR121 #2', strumX0 + 4, strumY0 + 2 * strumH / 3 - 10, 26, 20, UNDER - 15, UNDER - 3);
+part('Speaker box', strumX0 + (STRUM_W - 80) / 2, spkY0 + spkH / 2 - 24, 80, 48, UNDER - 36, UNDER);
+
+// On the base
+part('Teensy 4.1 + Audio Shield', gridX0 + 10, gridY0 + 15, 75, 45, 0, 26);
+part('Battery 2 × 18650', colX(6), gridY0 + 20, 77, 41, 0, 22);
+part('Charger / 5 V boost', colX(6) + 82, gridY0 + 25, 25, 22, 0, 10);
+part('Amplifier PAM8302A', strumX0 + 70, strumY0 + 30, 22, 18, 0, 12);
+
+// Through the back wall, left to right (they reach this far into the box)
+const JACKS = [
+  ['USB-C', 14, 24], ['MIDI IN', 22, 22], ['MIDI OUT', 22, 22], ['SYNC', 12, 22], ['SUSTAIN', 22, 32],
+  ['PHONES', 12, 22], ['LINE R', 22, 32], ['LINE L/MONO', 22, 32], ['SPEAKER', 12, 20],
+];
+{
+  let x = 50;
+  for (const [name, w, d] of JACKS) { part(name, x, 0, w, d, 2, 24, 'jack'); x += w + 8; }
+}
+
+// Parts screwed onto another part touch it on purpose.
+const MOUNTED_ON = { 'MPR121 #1': 'Strumplate + acrylic', 'MPR121 #2': 'Strumplate + acrylic' };
+
+/** Pairs closer than `min` mm (negative clearance = they overlap). */
+function clashes(min = 1) {
+  const out = [];
+  const gap = (a0, a1, b0, b1) => Math.max(b0 - a1, a0 - b1);
+  for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
+    const a = parts[i], b = parts[j];
+    if (a.kind === 'wood' && b.kind === 'wood') continue;        // joined on purpose
+    if (a.kind === 'jack' && b.kind === 'wood') continue;        // jacks pass under the back cleat by design
+    if (MOUNTED_ON[a.name] === b.name || MOUNTED_ON[b.name] === a.name) continue;
+    const c = Math.max(gap(a.x, a.x + a.w, b.x, b.x + b.w), gap(a.y, a.y + a.d, b.y, b.y + b.d), gap(a.z0, a.z1, b.z0, b.z1));
+    if (c < min) out.push({ a: a.name, b: b.name, c });
+  }
+  for (const p of parts) {
+    if (p.x < 0 || p.y < 0 || p.x + p.w > W || p.y + p.d > H || p.z0 < 0 || p.z1 > INNER_H) out.push({ a: p.name, b: 'enclosure', c: -1 });
+  }
+  return out;
+}
+
 // ── SVG ─────────────────────────────────────────────────────────────────────
 
 const f = n => +n.toFixed(3);
 const PAD = 10, TITLE_H = 24;
-const OX = PAD + FRAME_CHEEK, OY = PAD + FRAME_SIDE;            // panel origin on the sheet
-const SHEET_W = W + 2 * FRAME_CHEEK + 2 * PAD;
-const SHEET_H = H + 2 * FRAME_SIDE + 2 * PAD + TITLE_H;
+const OX = PAD + FRAME_T, OY = PAD + FRAME_T;            // panel origin on the sheet
+const SHEET_W = W + 2 * FRAME_T + 2 * PAD;
+const SHEET_H = H + 2 * FRAME_T + 2 * PAD + TITLE_H;
 
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
@@ -296,7 +370,7 @@ function svg(visual) {
     .title, .scale { fill: #000; }
     .scale-line { stroke: #000; }`;
 
-  const scaleY = OY + H + FRAME_SIDE + 10;
+  const scaleY = OY + H + FRAME_T + 10;
   const ticks = Array.from({ length: 11 }, (_, i) =>
     `<line class="scale-line" x1="${OX + i * 10}" y1="${scaleY}" x2="${OX + i * 10}" y2="${scaleY - (i % 5 ? 2 : 4)}"/>`).join('');
 
@@ -311,7 +385,7 @@ function svg(visual) {
   ${theme}
 </style>
 <rect class="sheet" x="0" y="0" width="${f(SHEET_W)}" height="${f(SHEET_H)}"/>
-<rect class="wood" x="${PAD}" y="${PAD}" width="${f(W + 2 * FRAME_CHEEK)}" height="${f(H + 2 * FRAME_SIDE)}" rx="${visual ? 4 : 0}"/>
+<rect class="wood" x="${PAD}" y="${PAD}" width="${f(W + 2 * FRAME_T)}" height="${f(H + 2 * FRAME_T)}" rx="${visual ? 4 : 0}"/>
 <g transform="translate(${OX} ${OY})">
   <rect class="panel" x="0" y="0" width="${f(W)}" height="${f(H)}"/>
   <g class="cut">${cuts.slice(1).map(cutSvg).join('\n')}</g>
@@ -321,7 +395,7 @@ function svg(visual) {
 </g>
 <line class="scale-line" x1="${OX}" y1="${scaleY}" x2="${OX + 100}" y2="${scaleY}"/>${ticks}
 <text class="scale" x="${OX}" y="${scaleY + 4}">100 mm — measure to confirm the print is at 100%</text>
-<text class="title" x="${OX + W}" y="${scaleY}" text-anchor="end">OmniHarp · top panel ${f(W)} × ${f(H)} mm · with wood frame ${f(W + 2 * FRAME_CHEEK)} × ${f(H + 2 * FRAME_SIDE)} mm</text>
+<text class="title" x="${OX + W}" y="${scaleY}" text-anchor="end">OmniHarp · top panel ${f(W)} × ${f(H)} mm · with wood frame ${f(W + 2 * FRAME_T)} × ${f(H + 2 * FRAME_T)} mm</text>
 <text class="title" x="${OX + W}" y="${scaleY + 5}" text-anchor="end">${visual ? 'visual preview' : 'red = cut · black = silkscreen · grey dashed = parts · blue dashed = seam between the two panel parts · brown = wood frame'} · draft</text>
 </svg>
 `;
@@ -363,9 +437,78 @@ function dxf() {
   return out.join('\n') + '\n';
 }
 
+
+// ── Inside view: plan + front-to-back section ────────────────────────────────
+
+function interno() {
+  const KIND = { wood: ['#d9b98a', '#8a5a2b'], elec: ['#b7d4ea', '#2a5d86'], jack: ['#f2c38f', '#a0521c'] };
+  const T = FRAME_T, PADI = 12;
+  const planX = PADI + T, planY = PADI + 14 + T;              // inner frame corner on the sheet
+  const secTop = planY + H + T + 26;                           // section drawing area
+  const cutX = 80;                                             // section plane, mm from the left inner wall
+  const secBase = secTop + FRAME_H + 4;                        // sheet y of the frame's bottom edge
+  const zY = z => secBase - BASE_T - z;                        // height above the base → sheet y
+  const sheetW = W + 2 * T + 2 * PADI, sheetH = secBase + 40;
+  const rectS = (x, y, w, h, fill, stroke, extra = '') =>
+    `<rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" fill="${fill}" stroke="${stroke}" stroke-width=".25"${extra}/>`;
+  const label = (x, y, t, size = 2.1, anchor = 'middle') =>
+    `<text x="${f(x)}" y="${f(y)}" font-size="${size}" text-anchor="${anchor}">${esc(t)}</text>`;
+
+  let o = `<svg xmlns="http://www.w3.org/2000/svg" width="${f(sheetW)}mm" height="${f(sheetH)}mm" viewBox="0 0 ${f(sheetW)} ${f(sheetH)}">
+<style>text{font-family:'DejaVu Sans',Arial,sans-serif;fill:#222}</style>
+<rect width="100%" height="100%" fill="#fff"/>
+${label(PADI, PADI + 3, 'PLAN — inside, seen from above with the panel removed (panel cut-outs in light red)', 3.2, 'start')}`;
+
+  // Plan: frame, panel cut-outs for reference, parts
+  o += rectS(planX - T, planY - T, W + 2 * T, H + 2 * T, KIND.wood[0], KIND.wood[1]);
+  o += rectS(planX, planY, W, H, '#fbfaf7', KIND.wood[1]);
+  o += `<g transform="translate(${planX} ${planY})" fill="none" stroke="#f3b0b0" stroke-width=".2">${cuts.slice(1).map(cutSvg).join('')}</g>`;
+  const order = [...parts].sort((a, b) => (b.z1 - b.z0) - (a.z1 - a.z0));
+  for (const p of order) {
+    const [fill, stroke] = KIND[p.kind];
+    o += rectS(planX + p.x, planY + p.y, p.w, p.d, fill, stroke, ' fill-opacity=".55"');
+  }
+  for (const p of parts) {
+    if (p.kind === 'wood' && p.name !== 'Seam rail') continue;
+    const vertical = p.kind === 'jack' || p.name === 'Seam rail';
+    const cx = planX + p.x + p.w / 2, cy = planY + p.y + p.d / 2;
+    o += vertical
+      ? `<text x="${f(cx)}" y="${f(cy)}" font-size="1.9" text-anchor="middle" transform="rotate(-90 ${f(cx)} ${f(cy)})">${esc(p.name)}</text>`
+      : label(cx, cy + 0.8, `${p.name} · ${p.z1 - p.z0 | 0} mm`);
+  }
+  o += `<line x1="${planX + cutX}" y1="${planY - T - 3}" x2="${planX + cutX}" y2="${planY + H + T + 3}" stroke="#d00" stroke-width=".35" stroke-dasharray="3 1.5"/>`;
+  o += label(planX + cutX, planY - T - 4.5, 'A', 3);
+  o += label(planX - T, planY + H + T + 6, `Outside ${f(W + 2 * T)} × ${f(H + 2 * T)} × ${FRAME_H} mm · wood ${T} mm on every side · inside height ${f(INNER_H)} mm (base to panel)`, 2.6, 'start');
+  o += label(planX - T, planY + H + T + 10, 'Back wall at the top (connectors), player at the bottom. Blue = electronics, orange = connectors, wood = cleats and seam rail.', 2.6, 'start');
+
+  // Section A: cut at x = cutX, back on the left
+  o += label(PADI, secTop - 6, `SECTION A — front-to-back cut at the red line (back on the left, player on the right)`, 3.2, 'start');
+  const sx = y => planX + y;                                   // depth → sheet x
+  o += rectS(sx(-T), secBase - FRAME_H, T, FRAME_H, KIND.wood[0], KIND.wood[1]);          // back wall
+  o += rectS(sx(H), secBase - FRAME_H, T, FRAME_H, KIND.wood[0], KIND.wood[1]);           // front wall
+  o += rectS(sx(0), secBase - BASE_T, H, BASE_T, KIND.wood[0], KIND.wood[1]);             // base
+  o += rectS(sx(0), zY(INNER_H + PANEL_T), H, PANEL_T, '#222', '#000');                    // panel
+  for (const p of parts) {
+    if (p.x > cutX || p.x + p.w < cutX) continue;
+    const [fill, stroke] = KIND[p.kind];
+    o += rectS(sx(p.y), zY(p.z1), p.d, p.z1 - p.z0, fill, stroke, ' fill-opacity=".7"');
+    if (p.kind !== 'wood') o += label(sx(p.y + p.d / 2), zY((p.z0 + p.z1) / 2) + 0.8, p.name, 1.9);
+  }
+  o += label(sx(H + T + 3), zY(INNER_H + PANEL_T) + 1, `panel ${PANEL_T} mm, ${PANEL_RECESS} mm below the wood`, 2.1, 'start');
+  o += label(sx(H + T + 3), secBase - BASE_T / 2 + 1, `base ${BASE_T} mm`, 2.1, 'start');
+
+  // Clearance report
+  const report = clashes();
+  o += label(PADI, sheetH - 14, report.length
+    ? `Clearance check: ${report.length} problem(s) — ` + report.map(r => `${r.a} × ${r.b} (${f(r.c)} mm)`).join(' · ')
+    : 'Clearance check: every part has at least 1 mm of room around it.', 2.8, 'start');
+  o += label(PADI, sheetH - 9, 'Sizes are typical for the parts in the README; measure the real ones and update the CHECK values.', 2.4, 'start');
+  return o + '</svg>\n';
+}
+
 // ── PDFs and PNG via the pre-installed Playwright Chromium ──────────────────
 
-async function render(corteSvg, visualSvg) {
+async function render(corteSvg, visualSvg, internoSvg) {
   let chromium;
   try { ({ chromium } = require('playwright')); } catch {
     console.warn('Playwright not found: skipping PDF/PNG (SVG and DXF are ready).');
@@ -399,6 +542,13 @@ async function render(corteSvg, visualSvg) {
   await page.setViewportSize({ width: Math.ceil(SHEET_W * pxPerMm), height: Math.ceil(SHEET_H * pxPerMm) });
   await page.setContent(`<style>body{margin:0}svg{width:${SHEET_W * pxPerMm}px;height:${SHEET_H * pxPerMm}px;display:block}</style>${visualSvg}`);
   await page.screenshot({ path: path.join(OUT, 'painel-visual.png') });
+
+  // PNG of the inside view
+  const m = internoSvg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+  const [iw, ih] = [+m[1] * pxPerMm, +m[2] * pxPerMm];
+  await page.setViewportSize({ width: Math.ceil(iw), height: Math.ceil(ih) });
+  await page.setContent(`<style>body{margin:0}svg{width:${iw}px;height:${ih}px;display:block}</style>${internoSvg}`);
+  await page.screenshot({ path: path.join(OUT, 'painel-interno.png') });
   await browser.close();
 }
 
@@ -408,7 +558,11 @@ async function render(corteSvg, visualSvg) {
   fs.writeFileSync(path.join(OUT, 'painel-corte.svg'), corte);
   fs.writeFileSync(path.join(OUT, 'painel-visual.svg'), visual);
   fs.writeFileSync(path.join(OUT, 'painel-corte.dxf'), dxf());
-  await render(corte, visual);
-  console.log(`Panel ${f(W)} × ${f(H)} mm (with wood frame ${f(W + 2 * FRAME_CHEEK)} × ${f(H + 2 * FRAME_SIDE)} mm)`);
+  const inside = interno();
+  fs.writeFileSync(path.join(OUT, 'painel-interno.svg'), inside);
+  await render(corte, visual, inside);
+  console.log(`Panel ${f(W)} × ${f(H)} mm (with wood frame ${f(W + 2 * FRAME_T)} × ${f(H + 2 * FRAME_T)} mm)`);
+  const report = clashes();
+  console.log(report.length ? `Clearance problems:\n${report.map(r => `  ${r.a} × ${r.b}: ${f(r.c)} mm`).join('\n')}` : 'Clearance check: OK');
   console.log(`${cuts.length} cut shapes · outputs in ${path.relative(process.cwd(), OUT) || OUT}`);
 })();

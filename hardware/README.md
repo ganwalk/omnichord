@@ -24,7 +24,7 @@ firmware vai reproduzir a mesma lógica de `src/theory.ts`, `patterns.ts`, `arp.
 | Controles | 10 sliders soldados na placa (o painel só tem os rasgos), encoder com botão (MENU), oitava pelas teclas OCT − / OCT + (o valor aparece no visor) |
 | Visores | **Duas telas OLED iguais de 2,42" (SSD1309, 128 × 64, verdes)**, lado a lado: "Sys monitor" com o robô (mesmos rostos e tempos do app) e "Chord display" com o acorde desenhado em estilo de LED. Mesmo modelo, mesma janela e mesma altura; o espaçamento segue o tamanho da placa do módulo (~71 × 41 mm). Use as versões SPI (cada tela com seu pino de seleção), num barramento separado do sensor da strumplate. |
 | Painel | Placa de circuito usada como painel: fibra de vidro preta, serigrafia branca, acabamento dourado (ENIG), dividida em 2 partes (controles e coluna da direita), presas à madeira por parafusos M3. A maquete é em MDF cortado a laser. |
-| Moldura | Madeira maciça (freijó ou cedro, com detalhes em imbuia), base de compensado multilaminado, rebaixo onde o painel apoia, buchas roscadas M4, furos oblongos para a madeira se mover |
+| Moldura | Madeira maciça de 20 mm (freijó ou cedro, com detalhes em imbuia), **a mesma largura nos quatro lados**, 55 mm de altura. Base de compensado multilaminado de 9 mm num rebaixo embaixo. O painel desce 1,5 mm abaixo da borda da madeira e apoia em sarrafos colados por dentro (10 × 15 mm), onde é parafusado; uma travessa de 16 mm sustenta a emenda. Conectores na parede de trás. |
 | Blindagem | Fita de alumínio por dentro da moldura, ligada ao terra; aterramento em estrela |
 
 ## Painel (`painel/`)
@@ -42,6 +42,7 @@ Gera em `hardware/painel/out/`:
 | `painel-corte.dxf` | Só os cortes, para o corte a laser da maquete em MDF de 3 mm |
 | `painel-corte.svg` | Cortes (vermelho), serigrafia (preto), peças (cinza tracejado), moldura (marrom) |
 | `painel-visual.svg` / `.png` | Como o instrumento deve ficar pronto |
+| `painel-interno.svg` / `.png` | Vista de dentro (planta sem o painel + corte de frente a trás) com as peças nas posições e alturas reais, e o resultado da checagem de folgas |
 
 ### Layout
 
@@ -61,7 +62,7 @@ Duas zonas, e cada uma é uma parte do painel:
   horizontal, do agudo (fundo) ao grave (perto de quem toca), como no app com o
   celular em pé. O firmware pode inverter a ordem.
 
-Medidas do rascunho: painel com **409 × 305 mm**; com a moldura, **469 × 335 mm**.
+Medidas do rascunho: painel com **417 × 305 mm**; por fora, com a moldura, **457 × 345 × 55 mm**. Por dentro há 43 mm entre a base e o painel.
 Strumplate de 110 × 231 mm, com cordas a cada ~9 mm.
 
 ### Pensado para a montagem
@@ -78,6 +79,12 @@ Strumplate de 110 × 231 mm, com cordas a cada ~9 mm.
   emenda, com folga para a madeira se mover.
 - Todas as teclas usam a mesma medida de furo e o mesmo passo, então uma única
   placa de teclas segura as 84.
+- **Checagem de folgas:** o gerador monta cada peça como uma caixa 3D (posição e
+  altura) e avisa se duas ficam a menos de 1 mm uma da outra. Embaixo do painel
+  ficam as telas, o encoder, os sliders, a placa das teclas, a strumplate com os
+  MPR121 e a caixa do alto-falante; na base ficam o Teensy com o Audio Shield, as
+  baterias, o carregador e o amplificador; os conectores entram pela parede de
+  trás, por baixo das telas.
 Todas as medidas ficam no topo do `gerar.cjs`. As marcadas com `CHECK` dependem da
 peça comprada: meça com paquímetro e ajuste antes de mandar cortar.
 
