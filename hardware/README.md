@@ -14,7 +14,7 @@ firmware vai reproduzir a mesma lógica de `src/theory.ts`, `patterns.ts`, `arp.
 | Tema | Decisão |
 |---|---|
 | Cérebro | Teensy 4.1 + Teensy Audio Shield Rev D (SGTL5000) |
-| Som interno | Alto-falante de 3" (4 Ω, 5 W) numa caixa fechada de madeira, com amplificador mono PAM8302A que fica mudo ao ligar, quando entra um fone ou pela chave |
+| Som interno | Alto-falante retangular de faixa larga (~70 × 40 mm, 4 Ω, 3–5 W) numa caixa fechada de madeira, debaixo de uma grade retangular com a mesma largura e moldura da strumplate, com amplificador mono PAM8302A que fica mudo ao ligar, quando entra um fone ou pela chave |
 | Saídas de áudio | 2 × P10 (L/MONO e R; com plugue só no L, o som vira mono), P2 de fone (isolado: o terra dele é o VGND do Audio Shield) |
 | MIDI | Saída e entrada DIN de 5 pinos + USB-MIDI; acordes no canal 1, cordas no 2, arpejo no 3, bateria no 10 (General MIDI), MIDI Clock com Start/Stop |
 | Extras | P10 para pedal de sustain, P2 de sincronia (pulso de tempo) |
@@ -57,7 +57,7 @@ Duas zonas, e cada uma é uma parte do painel:
      de cada grupo (PLAY, ARP) fica na ponta direita, mais perto da mão que
      dedilha, com um LED ao lado. TAP tempo = SHIFT + PLAY.
   5. Nomes das notas e a grade de 6 × 12 acordes.
-- **Direita:** alto-falante em cima e strumplate embaixo, com as 24 cordas na
+- **Direita:** grade retangular do alto-falante em cima (mesma largura e moldura da strumplate, para a coluna formar um bloco só) e strumplate embaixo, com as 24 cordas na
   horizontal, do agudo (fundo) ao grave (perto de quem toca), como no app com o
   celular em pé. O firmware pode inverter a ordem.
 

@@ -61,7 +61,8 @@ const POWER_D = 16;            // CHECK: power push button
 const LED_D = 3;               // status LEDs (light through the panel)
 const ENCODER_D = 7;           // CHECK: rotary encoder thread
 const ENCODER_KNOB_R = 13;     // knob footprint (guide)
-const SPEAKER_R = 29;          // grille radius (3" speaker)
+const SPEAKER = [70, 40];       // CHECK: rectangular full-range speaker (4 Ω, 3–5 W) under the grille (guide)
+const GRILLE_INSET = 5;        // grille holes keep this far from its frame
 const GRILLE_HOLE = 3.5;
 const GRILLE_PITCH = 6;
 const MOUNT_D = 3.6;           // M3 clearance holes to screw the panel to the wood
@@ -208,15 +209,20 @@ ROWS.forEach(([label, color], r) => {
   }
 });
 
-// Right column: speaker grille on top, strumplate below
-const spkX = strumX0 + STRUM_W / 2, spkY = topY0 + TOP_H / 2 - 2;
-for (let row = -10; row <= 10; row++) {
-  const y = spkY + row * GRILLE_PITCH * Math.sqrt(3) / 2;
-  for (let col = -10; col <= 10; col++) {
-    const x = spkX + col * GRILLE_PITCH + (row % 2 ? GRILLE_PITCH / 2 : 0);
-    if (Math.hypot(x - spkX, y - spkY) <= SPEAKER_R - GRILLE_HOLE / 2) circle(x, y, GRILLE_HOLE);
-  }
+// Right column: speaker grille on top, strumplate below. The grille is a
+// rectangle as wide as the strumplate, framed the same way, so the column
+// reads as one block; a rectangular speaker sits under its centre.
+const spkY0 = topY0, spkH = strumY0 - 6 - topY0;
+boxes.push({ x: strumX0, y: spkY0, w: STRUM_W, h: spkH });
+const rowStep = GRILLE_PITCH * Math.sqrt(3) / 2;
+const nRows = Math.floor((spkH - 2 * GRILLE_INSET - GRILLE_HOLE) / rowStep) + 1;
+const nCols = Math.floor((STRUM_W - 2 * GRILLE_INSET - GRILLE_HOLE - GRILLE_PITCH / 2) / GRILLE_PITCH) + 1;
+const gy0 = spkY0 + (spkH - (nRows - 1) * rowStep) / 2;
+const gx0 = strumX0 + (STRUM_W - (nCols - 1) * GRILLE_PITCH - GRILLE_PITCH / 2) / 2;
+for (let r = 0; r < nRows; r++) {
+  for (let c = 0; c < nCols; c++) circle(gx0 + c * GRILLE_PITCH + (r % 2 ? GRILLE_PITCH / 2 : 0), gy0 + r * rowStep, GRILLE_HOLE);
 }
+guides.push({ type: 'rect', x: strumX0 + (STRUM_W - SPEAKER[0]) / 2, y: spkY0 + (spkH - SPEAKER[1]) / 2, w: SPEAKER[0], h: SPEAKER[1], role: 'part' });
 
 rect(strumX0, strumY0, STRUM_W, strumH, 3);
 for (let i = 0; i < STRUM_N; i++) {
@@ -224,7 +230,7 @@ for (let i = 0; i < STRUM_N; i++) {
   const h = STRUM_PITCH - STRUM_GAP;
   guides.push({ type: 'rect', x: strumX0 + 5, y: cy - h / 2, w: STRUM_W - 10, h, role: 'strip' });
 }
-text(strumX0 + STRUM_W / 2, strumY0 - 2.2, 'STRUMPLATE · HIGH ▲', 2.3);
+text(strumX0 + STRUM_W / 2, strumY0 - 1.6, 'STRUMPLATE · HIGH ▲', 2.2);
 text(strumX0 + STRUM_W / 2, H - 4, '▼ LOW', 2.3);
 
 // ── SVG ─────────────────────────────────────────────────────────────────────
