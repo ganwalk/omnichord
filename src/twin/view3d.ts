@@ -388,18 +388,20 @@ export function mount3D(host: HTMLElement, api: TwinApi): { setView(name: string
     inside: [[0, 600, 300], 0],
   };
   let anim: { from: THREE.Vector3; to: THREE.Vector3; fromT: THREE.Vector3; toT: THREE.Vector3; start: number; ms: number } | null = null;
-  function setView(name: string): void {
+  /** Narrow (portrait) screens need the camera further back to fit the instrument. */
+  const fit = (): number => Math.max(1, 1.45 / Math.max(0.3, camera.aspect));
+  let viewName = 'play';
+  function setView(name: string, instant = false): void {
+    viewName = name;
     const v = VIEWS[name] ?? VIEWS.front;
     insideMode = name === 'inside';
     layout();
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     anim = {
-      from: camera.position.clone(), to: new THREE.Vector3(...v[0]),
-      fromT: controls.target.clone(), toT: new THREE.Vector3(0, v[1], 0), start: performance.now(), ms: reduce ? 0 : 700,
+      from: camera.position.clone(), to: new THREE.Vector3(...v[0]).multiplyScalar(fit()),
+      fromT: controls.target.clone(), toT: new THREE.Vector3(0, v[1], 0), start: performance.now(), ms: reduce || instant ? 0 : 700,
     };
   }
-  camera.position.set(...VIEWS.play[0]);
-  controls.target.set(0, VIEWS.play[1], 0);
 
   // ── Playing in 3D: pointer on a control plays it; anywhere else orbits ──
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -523,9 +525,16 @@ export function mount3D(host: HTMLElement, api: TwinApi): { setView(name: string
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
   }
-  new ResizeObserver(resize).observe(host);
+  let lastFit = 0;
+  new ResizeObserver(() => {
+    resize();
+    // Re-frame the current view when the screen changes shape (rotating a phone)
+    if (Math.abs(fit() - lastFit) > 0.05) { lastFit = fit(); setView(viewName, true); }
+  }).observe(host);
   resize();
   layout();
+  lastFit = fit();
+  setView('play', true);
 
   renderer.setAnimationLoop(() => {
     const now = performance.now();
