@@ -17,7 +17,7 @@ describe('twin layout (hardware/painel/out/layout.json)', () => {
 
   it('has the function keys the twin handles', () => {
     expect(LAYOUT.fnKeys.map(k => k.action).sort()).toEqual(
-      ['arp', 'f1', 'key', 'modeNext', 'modePrev', 'mute', 'octDown', 'octUp', 'play', 'shift', 'styleNext', 'stylePrev'],
+      ['arp', 'key', 'modeNext', 'modePrev', 'mute', 'octDown', 'octUp', 'play', 'shift', 'styleNext', 'stylePrev', 'tap'],
     );
     expect(PATTERNS.length).toBeGreaterThan(1);
   });

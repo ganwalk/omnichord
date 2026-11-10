@@ -22,7 +22,7 @@ firmware vai reproduzir a mesma lógica de `src/theory.ts`, `patterns.ts`, `arp.
 | Legendas | No painel: notas acima das colunas e tipo de acorde ao lado das fileiras (opção "c") |
 | Strumplate | Coluna à direita, abaixo do alto-falante: PCB com 24 trilhas horizontais (passo de ~9 mm) e plano de terra, lida por 2 × MPR121, coberta por acrílico de 1 mm. Nunca coberta por madeira. |
 | Controles | 10 sliders soldados na placa (o painel só tem os rasgos), encoder com botão (MENU), oitava pelas teclas OCT − / OCT + (o valor aparece no visor) |
-| Visores | **Duas telas OLED iguais de 2,42" (SSD1309, 128 × 64, verdes)**, lado a lado: "Sys monitor" com o robô (mesmos rostos e tempos do app) e "Chord display" com o acorde desenhado em estilo de LED. Mesmo modelo, mesma janela e mesma altura; o espaçamento segue o tamanho da placa do módulo (~71 × 41 mm). Use as versões SPI (cada tela com seu pino de seleção), num barramento separado do sensor da strumplate. |
+| Visores | **Duas telas coloridas iguais de 2,4" (IPS, 320 × 240, controlador ST7789 ou ILI9341, SPI)**, lado a lado: "Sys monitor" com o robô do app (verde, com as linhas de varredura) e "Chord display" com o acorde na cor da fileira dele, mais o estado do ritmo, do arpejo, da oitava e do tom, e o menu. Mesmo modelo, mesma janela (51 × 39 mm); o espaçamento segue a placa do módulo (~77 × 43 mm). Cada tela tem seu pino de seleção, num barramento separado do sensor da strumplate. |
 | Painel | Placa de circuito usada como painel: fibra de vidro preta, serigrafia branca, acabamento dourado (ENIG), dividida em 2 partes (controles e coluna da direita), presas à madeira por parafusos M3. A maquete é em MDF cortado a laser. |
 | Moldura | Madeira maciça de 20 mm (freijó ou cedro, com detalhes em imbuia), **a mesma largura nos quatro lados**, 55 mm de altura. Base de compensado multilaminado de 9 mm num rebaixo embaixo. O painel desce 1,5 mm abaixo da borda da madeira e apoia em sarrafos colados por dentro (10 × 15 mm), onde é parafusado; uma travessa de 16 mm sustenta a emenda. Conectores na parede de trás. |
 | Blindagem | Fita de alumínio por dentro da moldura, ligada ao terra; aterramento em estrela |
@@ -57,13 +57,14 @@ Duas zonas, e cada uma é uma parte do painel:
   2. Sliders em três grupos: MIXER (colunas 1–6), RHYTHM (7–9) e ARPEGGIATOR (10–12).
   3. Teclas de função, cada uma embaixo do grupo dela. A tecla de liga/desliga
      de cada grupo (PLAY, ARP) fica na ponta direita, mais perto da mão que
-     dedilha, com um LED ao lado. TAP tempo = SHIFT + PLAY.
+     dedilha, com um LED ao lado. TAP (bater o tempo) fica logo antes das teclas do
+     ritmo, com um LED que pisca na batida.
   4. Nomes das notas e a grade de 6 × 12 acordes.
 - **Direita:** grade retangular do alto-falante em cima (mesma largura da strumplate, para a coluna formar um bloco só) e strumplate embaixo, com as 24 cordas na
   horizontal, do agudo (fundo) ao grave (perto de quem toca), como no app com o
   celular em pé. O firmware pode inverter a ordem.
 
-Medidas do rascunho: painel com **417 × 310 mm**; por fora, com a moldura, **457 × 350 × 55 mm**. Por dentro há 43 mm entre a base e o painel.
+Medidas do rascunho: painel com **417 × 316 mm**; por fora, com a moldura, **457 × 356 × 55 mm**. Por dentro há 43 mm entre a base e o painel.
 Strumplate de 110 × 231 mm, com cordas a cada ~9 mm.
 
 ### Pensado para a montagem
@@ -102,8 +103,8 @@ npm run dev    # depois abra http://localhost:5173/twin.html
 
 - Teclas, sliders, encoder MENU, teclas de função e strumplate vertical funcionam
   com mouse, toque ou teclado.
-- As duas telas mostram o que as OLEDs de 128 × 64 mostrariam: o robô do app e o
-  acorde, com o menu (tom, LEDs das teclas, sentido da strumplate, brilho).
+- As duas telas coloridas (320 × 240) mostram o robô do app e o acorde, com o
+  menu (tom, LEDs das teclas, sentido da strumplate, brilho).
 - O brilho sob as teclas simula LEDs por tecla, um opcional para o físico.
 - Depois de mudar o painel, rode `node hardware/painel/gerar.cjs`: o gêmeo
   passa a usar o layout novo.
@@ -111,7 +112,7 @@ npm run dev    # depois abra http://localhost:5173/twin.html
 ## Próximas etapas
 
 1. **Teste em papel.** Imprima o A2, apoie na mesa, posicione as mãos e simule tocar. Anote o que estiver apertado ou longe.
-2. **Comprar as peças críticas** (switches, sliders, OLED, mostradores, encoder, jaques) e medir. Atualize os valores `CHECK`.
+2. **Comprar as peças críticas** (switches, sliders, telas, encoder, jaques) e medir. Atualize os valores `CHECK`.
 3. **Maquete em MDF de 3 mm cortada a laser** (`painel-corte.dxf`), com as peças encaixadas.
 4. **Protoboard:** Teensy + áudio + MIDI + alguns botões + strumplate de teste + robô.
 5. **Firmware** (`firmware/`, PlatformIO): lógica do app portada para C++, com testes que comparam as notas geradas com as do app.

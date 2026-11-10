@@ -46,7 +46,7 @@ const STRUM_W = 110;       // strumplate window width (string length)
 const STRUM_GAP = 3;       // gap between neighbouring copper strips (guide)
 const STRUM_PAD = 4;       // window margin around the strips
 
-const TOP_H = 54;          // displays band (and speaker, on the right)
+const TOP_H = 60;          // displays band (and speaker, on the right)
 const SLIDER_H = 79;       // slider row (the knobs overhang the slot ends by half their height)
 const FN_H = 30;           // function row (label + key)
 const HEADER_H = 9;        // note names above the grid
@@ -55,9 +55,11 @@ const SLIDER_TRAVEL = 45;  // CHECK: slide pot travel
 const SLIDER_SLOT_W = 3;   // CHECK: lever width + clearance
 const SLIDER_CAP = [10, 18]; // CHECK: slider knob footprint (guide)
 
-const OLED_WIN = [58, 31];     // CHECK: 2.42" SSD1309 visible area + 1 mm (both screens are this model)
-const OLED_MODULE = [71, 41];  // CHECK: the module's circuit board behind the panel (sets the spacing)
-const OLED_GAP = 3;            // between the two modules' boards
+// Two identical 2.4" IPS colour screens, 320 × 240 (ST7789 or ILI9341), landscape.
+const SCREEN_ACTIVE = [48.96, 36.72]; // CHECK: lit area of the 2.4" panel
+const SCREEN_WIN = [51, 39];          // window in the panel: lit area + ~1 mm all round
+const SCREEN_MODULE = [77, 43];       // CHECK: the module's circuit board behind the panel (sets the spacing)
+const SCREEN_GAP = 3;                 // between the two modules' boards
 const POWER_D = 16;            // CHECK: power push button
 const LED_D = 3;               // status LEDs (light through the panel)
 const ENCODER_D = 7;           // CHECK: rotary encoder thread
@@ -90,12 +92,12 @@ const ROWS = [
 // Control groups, by key column. Sliders sit on column centres or, in the
 // 3-column groups, on the lines between columns so the pair stays centred.
 // The on/off key of each group is its rightmost key, nearest the strumming hand.
-// TAP tempo = SHIFT + PLAY.
+// TAP sits right beside the rhythm keys; its LED blinks on the beat.
 const GROUPS = [
   { title: 'MIXER', from: 0, to: 5,
     sliders: [[0.5, 'MASTER', 'master'], [1.5, 'CHORD', 'chordVol'], [2.5, 'STRUM', 'strumVol'],
       [3.5, 'TONE', 'tone'], [4.5, 'REVERB', 'reverb'], [5.5, 'GLIDE', 'glide']],
-    keys: [['SHIFT', 'shift'], ['MUTE', 'mute'], ['KEY', 'key'], ['OCT −', 'octDown'], ['OCT +', 'octUp'], ['F1', 'f1']] },
+    keys: [['SHIFT', 'shift'], ['MUTE', 'mute'], ['KEY', 'key'], ['OCT −', 'octDown'], ['OCT +', 'octUp'], ['TAP', 'tap']] },
   { title: 'RHYTHM', from: 6, to: 8,
     sliders: [[7, 'TEMPO', 'bpm'], [8, 'VOLUME', 'rhythmVol']],
     keys: [['◀ STYLE', 'stylePrev'], ['STYLE ▶', 'styleNext'], ['PLAY', 'play']] },
@@ -148,10 +150,10 @@ for (const [x1, x2] of [[0, seamX], [seamX, W]]) {
   for (const x of [x1 + MOUNT_INSET, x2 - MOUNT_INSET]) { circle(x, H / 2, MOUNT_D); twin.mounts.push([x, H / 2]); }
 }
 
-// Top band: power · two identical OLED screens (robot, chord) · OMNIHARP
+// Top band: power · two identical colour screens (robot, chord) · OMNIHARP
 // wordmark · MENU encoder. The screens are spaced by their boards,
 // which are much larger than the visible glass.
-const dispY = topY0 + 5, dispMid = dispY + OLED_WIN[1] / 2, dispLabelY = dispY + OLED_WIN[1] + 6;
+const dispY = topY0 + 5, dispMid = dispY + SCREEN_WIN[1] / 2, dispLabelY = dispY + SCREEN_WIN[1] + 6;
 circle(M + LABEL_W / 2, dispMid - 3, POWER_D);
 circle(M + LABEL_W / 2, dispMid + 12, LED_D);
 text(M + LABEL_W / 2, dispLabelY, 'POWER', 2.3);
@@ -159,17 +161,17 @@ twin.power = { x: M + LABEL_W / 2, y: dispMid - 3, d: POWER_D };
 twin.leds.push({ id: 'power', x: M + LABEL_W / 2, y: dispMid + 12, d: LED_D });
 
 const screen = (col, label, guide) => {
-  const x = colX(col) - OLED_WIN[0] / 2;
-  rect(x, dispY, OLED_WIN[0], OLED_WIN[1], 2);
-  guides.push({ type: 'rect', x: colX(col) - OLED_MODULE[0] / 2, y: dispMid - OLED_MODULE[1] / 2,
-    w: OLED_MODULE[0], h: OLED_MODULE[1], role: 'part' });
+  const x = colX(col) - SCREEN_WIN[0] / 2;
+  rect(x, dispY, SCREEN_WIN[0], SCREEN_WIN[1], 2);
+  guides.push({ type: 'rect', x: colX(col) - SCREEN_MODULE[0] / 2, y: dispMid - SCREEN_MODULE[1] / 2,
+    w: SCREEN_MODULE[0], h: SCREEN_MODULE[1], role: 'part' });
   guides.push({ type: guide, x: colX(col), y: dispMid });
   text(colX(col), dispLabelY, label, 2.3);
-  twin.screens.push({ id: guide === 'robot' ? 'robot' : 'chord', x, y: dispY, w: OLED_WIN[0], h: OLED_WIN[1] });
+  twin.screens.push({ id: guide === 'robot' ? 'robot' : 'chord', x, y: dispY, w: SCREEN_WIN[0], h: SCREEN_WIN[1], aw: SCREEN_ACTIVE[0], ah: SCREEN_ACTIVE[1] });
 };
 const powerEdge = M + LABEL_W / 2 + POWER_D / 2 + 3;               // power button body + 2 mm clearance
-const scr1 = (powerEdge + OLED_MODULE[0] / 2 - gridX0) / P;        // in columns
-const scr2 = scr1 + (OLED_MODULE[0] + OLED_GAP) / P;
+const scr1 = (powerEdge + SCREEN_MODULE[0] / 2 - gridX0) / P;        // in columns
+const scr2 = scr1 + (SCREEN_MODULE[0] + SCREEN_GAP) / P;
 screen(scr1, 'SYS MONITOR', 'robot');
 screen(scr2, 'CHORD DISPLAY', 'seg');
 
@@ -181,7 +183,7 @@ guides.push({ type: 'circle', cx: encX, cy: dispMid, r: ENCODER_KNOB_R, role: 'k
 text(encX, dispLabelY, 'MENU · PUSH', 2.3);
 twin.encoder = { x: encX, y: dispMid, r: ENCODER_KNOB_R };
 
-const brandX = (colX(scr2) + OLED_WIN[0] / 2 + encX - ENCODER_KNOB_R) / 2;
+const brandX = (colX(scr2) + SCREEN_WIN[0] / 2 + encX - ENCODER_KNOB_R) / 2;
 text(brandX, dispMid + 2.4, 'OMNIHARP', 6.5, 'middle', '900', 0.8);
 
 // Slider row + function row, by group
@@ -196,10 +198,6 @@ for (const g of GROUPS) {
   const x1 = colX(g.from) + 0.8, x2 = colX(g.to + 1) - 0.8;
   text((x1 + x2) / 2, sliderY0 + 4.5, g.title, 2.3, 'middle', 'bold');
   // Tempo pulse LED beside the RHYTHM title (MIDI activity shows on the SYS MONITOR)
-  if (g.title === 'RHYTHM') {
-    circle((x1 + x2) / 2 + 9, sliderY0 + 3.7, LED_D - 0.5);
-    twin.leds.push({ id: 'beat', x: (x1 + x2) / 2 + 9, y: sliderY0 + 3.7, d: LED_D - 0.5 });
-  }
 
   for (const [col, label, setting] of g.sliders) {
     const x = colX(col);
@@ -218,10 +216,10 @@ for (const g of GROUPS) {
     twin.fnKeys.push({ action, x: cx, y: fnKeyY });
   });
 }
-// Status LEDs of the two on/off keys, beside their labels
-for (const [g, i] of [[GROUPS[1], 2], [GROUPS[2], 2]]) {
+// LEDs beside the labels of PLAY, ARP (on/off) and TAP (blinks on the beat)
+for (const [g, i, id] of [[GROUPS[0], 5, 'beat'], [GROUPS[1], 2, 'play'], [GROUPS[2], 2, 'arp']]) {
   circle(colX(g.from + i + 0.5) + 5.5, fnKeyY - CAP / 2 - 2.4, LED_D - 0.5);
-  twin.leds.push({ id: g.keys[i][1], x: colX(g.from + i + 0.5) + 5.5, y: fnKeyY - CAP / 2 - 2.4, d: LED_D - 0.5 });
+  twin.leds.push({ id, x: colX(g.from + i + 0.5) + 5.5, y: fnKeyY - CAP / 2 - 2.4, d: LED_D - 0.5 });
 }
 
 // Chord grid: note names on top, row labels on the left (keycaps stay blank)
@@ -283,8 +281,8 @@ part('Seam rail', seamX - RAIL_W / 2, CLEAT[0], RAIL_W, H - 2 * CLEAT[0], UNDER 
 
 // Hanging from the panel
 part('Power button', M + LABEL_W / 2 - 9, dispMid - 3 - 9, 18, 18, UNDER - 28, UNDER);
-for (const [col, name] of [[scr1, 'OLED (robot)'], [scr2, 'OLED (chord)']]) {
-  part(name, colX(col) - OLED_MODULE[0] / 2, dispMid - OLED_MODULE[1] / 2, OLED_MODULE[0], OLED_MODULE[1], UNDER - 14, UNDER);
+for (const [col, name] of [[scr1, 'Screen (robot)'], [scr2, 'Screen (chord)']]) {
+  part(name, colX(col) - SCREEN_MODULE[0] / 2, dispMid - SCREEN_MODULE[1] / 2, SCREEN_MODULE[0], SCREEN_MODULE[1], UNDER - 14, UNDER);
 }
 part('Encoder', encX - 7, dispMid - 7, 14, 14, UNDER - 15, UNDER);   // EC11-type, nut on the panel
 part('Slider board', gridX0 - 3, slotTop - 9, gridW + 5, slotBottom - slotTop + 18, UNDER - 16, UNDER);

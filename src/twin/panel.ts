@@ -1,6 +1,6 @@
 // ─── The physical panel, drawn from the hardware generator's layout ───
 // hardware/painel/gerar.cjs writes out/layout.json; this module turns it into
-// an interactive SVG (keys, sliders, encoder, strumplate) with the OLED
+// an interactive SVG (keys, sliders, encoder, strumplate) with the colour
 // screens as canvases laid over their windows. Units are millimetres.
 
 import raw from '../../hardware/painel/out/layout.json';
@@ -15,7 +15,7 @@ export interface Layout {
   keys: { type: number; root: number; x: number; y: number; color: string }[];
   fnKeys: { action: string; x: number; y: number }[];
   sliders: { setting: string; x: number; y1: number; y2: number }[];
-  screens: { id: 'robot' | 'chord'; x: number; y: number; w: number; h: number }[];
+  screens: { id: 'robot' | 'chord'; x: number; y: number; w: number; h: number; aw: number; ah: number }[];
   leds: { id: string; x: number; y: number; d: number }[];
   grille: [number, number][];
   mounts: [number, number][];
@@ -123,15 +123,15 @@ export function buildPanel(stage: HTMLElement, L: Layout = LAYOUT): PanelView {
   const grille = el('g', { fill: '#040404' }, svg);
   for (const [x, y] of L.grille) el('circle', { cx: x, cy: y, r: L.holeD / 2 }, grille);
 
-  // OLED windows (the canvases go on top, as HTML)
+  // Screen windows (the canvases go on top, as HTML)
   const screens = new Map<string, HTMLCanvasElement>();
   const pct = (v: number, total: number): string => `${((v + F) / (total + 2 * F)) * 100}%`;
   for (const s of L.screens) {
     el('rect', { x: s.x, y: s.y, width: s.w, height: s.h, rx: 2, fill: '#000', stroke: '#2a2a2a', 'stroke-width': 0.4 }, svg);
-    // 2.42" active area: 55.0 × 27.5 mm, centred in the window
-    const aw = 55, ah = 27.5, ax = s.x + (s.w - aw) / 2, ay = s.y + (s.h - ah) / 2;
+    // Lit area of the screen, centred in the window
+    const { aw, ah } = s, ax = s.x + (s.w - aw) / 2, ay = s.y + (s.h - ah) / 2;
     const canvas = document.createElement('canvas');
-    canvas.className = 'twin-oled';
+    canvas.className = 'twin-screen';
     Object.assign(canvas.style, {
       left: pct(ax, W), top: pct(ay, H),
       width: `${(aw / (W + 2 * F)) * 100}%`, height: `${(ah / (H + 2 * F)) * 100}%`,
