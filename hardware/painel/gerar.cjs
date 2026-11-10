@@ -19,21 +19,32 @@ const path = require('path');
 const OUT = path.join(__dirname, 'out');
 
 // ── Parameters ──────────────────────────────────────────────────────────────
+//
+// Layout: the strumplate is a full-height column on the right, strings
+// running across it and stacked front to back (low strings nearest the
+// player, as in the app's portrait layout). Everything else lives in the
+// area to its left, top to bottom:
+//   top band     power · brand · SYS MONITOR (robot) · CHORD DISPLAY · status LEDs
+//   slider band  mixer · octave · rhythm · arpeggiator · MENU encoder
+//   function row 12 keys aligned with the grid columns
+//   chord grid   note names + 6 × 12 keys, speaker grille to its right
 
 const M = 12;              // panel margin
 const P = 19.05;           // key pitch (MX standard)
 const KEY_CUT = 14;        // MX plate cut-out (square)
 const CAP = 18;            // keycap footprint, guide only (DSA/XDA ≈ 18 mm)
 const LABEL_W = 30;        // column left of the grid for row labels
-const GAP = 20;            // between chord grid and strumplate
+const LEFT_W = 345;        // right edge of the controls area
+const GAP = 16;            // between the controls area and the strumplate
 
 const STRUM_N = 24;        // strings (theory.ts STRING_COUNT)
-const STRUM_PITCH = 8;     // string centre to centre
-const STRUM_STRIP = 5.5;   // copper strip width on the strumplate PCB (guide)
+const STRUM_W = 110;       // strumplate window width (string length)
+const STRUM_GAP = 3.5;     // gap between neighbouring copper strips (guide)
 const STRUM_PAD = 4;       // window margin around the strips
 
-const TOP_H = 70;          // band with power, brand, displays, LEDs, speaker
-const SLIDER_H = 75;       // band with sliders and function keys
+const TOP_H = 70;          // band with power, brand, displays, LEDs
+const SLIDER_H = 75;       // band with sliders, octave switch, encoder
+const FN_H = 28;           // row of function keys (label + key)
 const HEADER_H = 8;        // note names above the grid
 
 const SLIDER_TRAVEL = 45;  // CHECK: slide pot travel
@@ -59,27 +70,31 @@ const ROWS = [
   ['Major', '#4a8a5a'], ['Minor', '#5080b0'], ['7th', '#a06050'],
   ['m7', '#806098'], ['Maj7', '#407090'], ['Dim7', '#8a7030'],
 ];
+const FUNCTIONS = ['PLAY', '◀ RHYTHM', 'RHYTHM ▶', 'TAP', 'ARP', '◀ MODE', 'MODE ▶', 'KEY', 'MUTE', 'SHIFT', 'F1', 'F2'];
 
 // ── Derived layout ──────────────────────────────────────────────────────────
 
 const gridX0 = M + LABEL_W;
 const gridW = 12 * P;
-const strumX0 = gridX0 + gridW + GAP;
-const strumW = STRUM_N * STRUM_PITCH + 2 * STRUM_PAD;
-const W = strumX0 + strumW + M;
+const strumX0 = LEFT_W + GAP;
+const W = strumX0 + STRUM_W + M;
 
 const topY0 = M;
 const sliderY0 = topY0 + TOP_H;
-const headerY0 = sliderY0 + SLIDER_H;
+const fnY0 = sliderY0 + SLIDER_H;
+const headerY0 = fnY0 + FN_H;
 const gridY0 = headerY0 + HEADER_H;
 const H = gridY0 + 6 * P + M;
+
+const strumY0 = M, strumH = H - 2 * M;
+const STRUM_PITCH = (strumH - 2 * STRUM_PAD) / STRUM_N;
 
 // ── Geometry collection ─────────────────────────────────────────────────────
 // Shapes are in panel coordinates (origin top-left, y down).
 
 const cuts = [];    // {type:'rect', x,y,w,h,r} | {type:'circle', cx,cy,r} | {type:'slot', cx,y1,y2,w}
 const texts = [];   // {x,y,s,t,anchor,weight}
-const guides = [];  // {type:'rect'|'circle'|'strip', ..., fill}
+const guides = [];  // {type:'rect'|'circle'|'robot'|'seg', ..., role, fill}
 
 const rect = (x, y, w, h, r = 0) => cuts.push({ type: 'rect', x, y, w, h, r });
 const circle = (cx, cy, d) => cuts.push({ type: 'circle', cx, cy, r: d / 2 });
@@ -89,47 +104,39 @@ const text = (x, y, t, s = 2.6, anchor = 'middle', weight = 'normal') =>
 // Panel outline
 rect(0, 0, W, H);
 
-// Top band: power, brand, displays, status LEDs, speaker
+// Top band: power, brand, robot screen, chord display, status LEDs
 const midTop = topY0 + TOP_H / 2;
 circle(M + 16, midTop - 6, POWER_D);
 circle(M + 16, midTop + 16, LED_D + 2);
 text(M + 16, midTop + 26, 'POWER', 2.4);
 
-const brandX = M + 40;
+const brandX = M + 38;
 text(brandX, midTop - 9, 'GANWALK', 2.6, 'start');
-text(brandX, midTop + 2, 'OMNIHARP', 8, 'start', 'bold');
+text(brandX, midTop + 2, 'OMNIHARP', 7.5, 'start', 'bold');
 text(brandX, midTop + 9, 'CHORD SYNTH', 2.6, 'start');
 
-const oledX = 140, oledY = midTop - OLED_WIN[1] / 2 - 4;
+const oledX = 112, oledY = midTop - OLED_WIN[1] / 2 - 4;
 rect(oledX, oledY, OLED_WIN[0], OLED_WIN[1], 2);
 guides.push({ type: 'rect', x: oledX - 2, y: oledY - 4, w: OLED_WIN[0] + 4, h: OLED_WIN[1] + 8, role: 'part' });
 text(oledX + OLED_WIN[0] / 2, oledY + OLED_WIN[1] + 6, 'SYS MONITOR', 2.4);
 guides.push({ type: 'robot', x: oledX + OLED_WIN[0] / 2, y: oledY + OLED_WIN[1] / 2 });
 
-const segX = oledX + OLED_WIN[0] + 17, segY = midTop - SEG_WIN[1] / 2 - 4;
+const segX = oledX + OLED_WIN[0] + 12, segY = midTop - SEG_WIN[1] / 2 - 4;
 rect(segX, segY, SEG_WIN[0], SEG_WIN[1], 1.5);
 text(segX + SEG_WIN[0] / 2, oledY + OLED_WIN[1] + 6, 'CHORD DISPLAY', 2.4);
 guides.push({ type: 'seg', x: segX + SEG_WIN[0] / 2, y: segY + SEG_WIN[1] / 2 });
 
 ['PLAY', 'ARP', 'BEAT', 'MIDI'].forEach((lbl, i) => {
-  const x = segX + SEG_WIN[0] + 18 + i * 17;
-  circle(x, midTop - 6, LED_D);
-  text(x, midTop + 2, lbl, 2.2);
+  const x = segX + SEG_WIN[0] + 16 + (i % 2) * 20;
+  const y = midTop - 14 + Math.floor(i / 2) * 18;
+  circle(x, y, LED_D);
+  text(x, y + 6.5, lbl, 2.2);
 });
 
-const spkX = W - M - SPEAKER_R - 12, spkY = midTop;
-for (let row = -10; row <= 10; row++) {
-  const y = spkY + row * GRILLE_PITCH * Math.sqrt(3) / 2;
-  for (let col = -10; col <= 10; col++) {
-    const x = spkX + col * GRILLE_PITCH + (row % 2 ? GRILLE_PITCH / 2 : 0);
-    if (Math.hypot(x - spkX, y - spkY) <= SPEAKER_R - GRILLE_HOLE / 2) circle(x, y, GRILLE_HOLE);
-  }
-}
-
-// Slider band: mixer, octave, rhythm, arp (left) and function keys + encoder (right)
+// Slider band: mixer, octave, rhythm, arp, MENU encoder
 const slotTop = sliderY0 + 10;
 const slotBottom = slotTop + SLIDER_TRAVEL + SLIDER_SLOT_W;
-const sliderLabelY = sliderY0 + SLIDER_H - 3.5;
+const sliderLabelY = sliderY0 + SLIDER_H - 5;
 const slider = (x, label) => {
   cuts.push({ type: 'slot', cx: x, y1: slotTop, y2: slotBottom, w: SLIDER_SLOT_W });
   guides.push({ type: 'rect', x: x - SLIDER_CAP[0] / 2, y: (slotTop + slotBottom) / 2 - SLIDER_CAP[1] / 2,
@@ -158,24 +165,20 @@ slider(rx + 50, 'SPEED');
 slider(rx + 72, 'ARP VOL');
 groupLabel(rx + 50, rx + 72, 'ARPEGGIATOR');
 
-const FN = [
-  ['PLAY', 'ARP', '◀ RHYTHM', 'RHYTHM ▶', '◀ MODE', 'MODE ▶'],
-  ['MUTE', 'KEY', 'TAP', 'SHIFT', 'F1', 'F2'],
-];
-const fnPitchX = 24, fnPitchY = 31;
-const fnX0 = strumX0 + 8 + CAP / 2, fnY0 = sliderY0 + 8 + CAP / 2 + 3;
-FN.forEach((row, r) => row.forEach((lbl, c) => {
-  const cx = fnX0 + c * fnPitchX, cy = fnY0 + r * fnPitchY;
-  rect(cx - KEY_CUT / 2, cy - KEY_CUT / 2, KEY_CUT, KEY_CUT);
-  guides.push({ type: 'rect', x: cx - CAP / 2, y: cy - CAP / 2, w: CAP, h: CAP, role: 'fnkey' });
-  text(cx, cy - CAP / 2 - 1.5, lbl, 2.2);
-}));
-const encX = fnX0 + 5 * fnPitchX + 30, encY = fnY0 + fnPitchY / 2;
+const encX = (rx + 72 + LEFT_W) / 2 + 4, encY = (slotTop + slotBottom) / 2;
 circle(encX, encY, ENCODER_D);
 guides.push({ type: 'circle', cx: encX, cy: encY, r: 12.5, role: 'knob' });
-text(encX, encY - 16, 'MENU', 2.3);
+text(encX, sliderLabelY, 'MENU', 2.3);
 
-// Chord grid: note names on top, row labels on the left (keycaps stay blank)
+// Function row: one key per grid column, label above (keycaps stay blank)
+FUNCTIONS.forEach((lbl, i) => {
+  const cx = gridX0 + (i + 0.5) * P, cy = fnY0 + 6 + CAP / 2;
+  rect(cx - KEY_CUT / 2, cy - KEY_CUT / 2, KEY_CUT, KEY_CUT);
+  guides.push({ type: 'rect', x: cx - CAP / 2, y: cy - CAP / 2, w: CAP, h: CAP, role: 'fnkey' });
+  text(cx, fnY0 + 4, lbl, 2.1);
+});
+
+// Chord grid: note names on top, row labels on the left
 NOTE_NAMES.forEach((n, i) => text(gridX0 + (i + 0.5) * P, headerY0 + 5.5, n, 3, 'middle', 'bold'));
 ROWS.forEach(([label, color], r) => {
   const cy = gridY0 + (r + 0.5) * P;
@@ -187,14 +190,25 @@ ROWS.forEach(([label, color], r) => {
   }
 });
 
-// Strumplate window, aligned with header + grid
-const strumY0 = headerY0, strumH = HEADER_H + 6 * P;
-rect(strumX0, strumY0, strumW, strumH, 3);
-for (let i = 0; i < STRUM_N; i++) {
-  const cx = strumX0 + STRUM_PAD + (i + 0.5) * STRUM_PITCH;
-  guides.push({ type: 'rect', x: cx - STRUM_STRIP / 2, y: strumY0 + 5, w: STRUM_STRIP, h: strumH - 10, role: 'strip' });
+// Speaker grille, between the grid and the strumplate
+const spkX = (gridX0 + gridW + LEFT_W) / 2, spkY = (fnY0 + H - M) / 2;
+for (let row = -10; row <= 10; row++) {
+  const y = spkY + row * GRILLE_PITCH * Math.sqrt(3) / 2;
+  for (let col = -10; col <= 10; col++) {
+    const x = spkX + col * GRILLE_PITCH + (row % 2 ? GRILLE_PITCH / 2 : 0);
+    if (Math.hypot(x - spkX, y - spkY) <= SPEAKER_R - GRILLE_HOLE / 2) circle(x, y, GRILLE_HOLE);
+  }
 }
-text(strumX0 + strumW / 2, strumY0 - 2.5, 'STRUMPLATE   low ◀ ▶ high', 2.3);
+
+// Strumplate: full-height column, strings stacked top (high) to bottom (low)
+rect(strumX0, strumY0, STRUM_W, strumH, 3);
+for (let i = 0; i < STRUM_N; i++) {
+  const cy = strumY0 + STRUM_PAD + (i + 0.5) * STRUM_PITCH;
+  const h = STRUM_PITCH - STRUM_GAP;
+  guides.push({ type: 'rect', x: strumX0 + 5, y: cy - h / 2, w: STRUM_W - 10, h, role: 'strip' });
+}
+text(strumX0 + STRUM_W / 2, M - 3.5, 'STRUMPLATE · HIGH ▲', 2.3);
+text(strumX0 + STRUM_W / 2, H - 4, '▼ LOW', 2.3);
 
 // ── SVG ─────────────────────────────────────────────────────────────────────
 

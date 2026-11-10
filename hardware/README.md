@@ -20,7 +20,7 @@ firmware vai reproduzir a mesma lógica de `src/theory.ts`, `patterns.ts`, `arp.
 | Extras | P10 para pedal de sustain, P2 de sincronia (pulso de tempo) |
 | Teclas | 72 de acorde (6 × 12) + 12 de função, switches estilo MX em **soquetes hot-swap** (sem solda nos switches), teclas lisas compradas prontas, uma cor por fileira |
 | Legendas | No painel: notas acima das colunas e tipo de acorde ao lado das fileiras (opção "c") |
-| Strumplate | PCB com 24 trilhas (passo de 8 mm) e plano de terra, lida por 2 × MPR121, coberta por acrílico de 1 mm. Nunca coberta por madeira. |
+| Strumplate | PCB com 24 trilhas horizontais (passo de ~12 mm, coluna de altura total na direita) e plano de terra, lida por 2 × MPR121, coberta por acrílico de 1 mm. Nunca coberta por madeira. |
 | Controles | 10 sliders soldados na placa (o painel só tem os rasgos), chave de oitava de 3 posições, encoder com botão (MENU) |
 | Visores | "Sys monitor": OLED verde de 2,42" (SSD1309) com o robô, os mesmos rostos e tempos do app. "Chord display": 2 × mostradores verdes de 14 segmentos com 4 caracteres (HT16K33). Os dois ficam num barramento I²C separado do sensor da strumplate. |
 | Painel | Placa de circuito usada como painel: fibra de vidro preta, serigrafia branca, acabamento dourado (ENIG), dividida em 2–3 partes. A maquete é em MDF cortado a laser. |
@@ -43,7 +43,14 @@ Gera em `hardware/painel/out/`:
 | `painel-corte.svg` | Cortes (vermelho), serigrafia (preto), peças (cinza tracejado), moldura (marrom) |
 | `painel-visual.svg` / `.png` | Como o instrumento deve ficar pronto |
 
-Medidas do rascunho: painel com **503 × 291 mm**; com a moldura, **563 × 321 mm**.
+Layout: a **strumplate ocupa toda a lateral direita**, com as 24 cordas na
+horizontal, empilhadas de trás (agudo) para a frente (grave, perto de quem toca),
+como no app com o celular em pé. À esquerda, de cima para baixo: power, marca e
+visores; sliders e encoder MENU; uma fileira de 12 teclas de função alinhada às
+colunas da grade; e a grade de acordes, com a grade do alto-falante à direita dela.
+
+Medidas do rascunho: painel com **483 × 319 mm**; com a moldura, **543 × 349 mm**.
+Strumplate de 110 × 295 mm, com cordas a cada ~12 mm.
 Todas as medidas ficam no topo do `gerar.cjs`. As marcadas com `CHECK` dependem da
 peça comprada: meça com paquímetro e ajuste antes de mandar cortar.
 
