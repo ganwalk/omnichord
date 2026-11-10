@@ -96,3 +96,30 @@ body {
 }
 .twin-help p { margin: 0 0 6px; break-inside: avoid; }
 .twin-help b { color: var(--ink); }
+
+/* Mode switch */
+.twin-modes { display: flex; gap: 4px; }
+.twin-modes button, .bar3d button {
+  font: 600 .8125rem system-ui, sans-serif; color: var(--ink); background: #2b2118;
+  border: 1px solid #4a3a28; border-radius: 999px; padding: 6px 14px; cursor: pointer;
+}
+.twin-modes button[aria-pressed="true"], .bar3d button[aria-pressed="true"] { background: #c99a5b; color: #1b1209; border-color: #c99a5b; }
+.twin-modes button:focus-visible, .bar3d button:focus-visible { outline: 2px solid #c99a5b; outline-offset: 2px; }
+
+/* 3D view */
+.twin-3d { width: 100%; max-width: 1200px; display: flex; flex-direction: column; gap: 10px; }
+.scene3d {
+  position: relative; height: min(72vh, 780px); min-height: 320px; border-radius: 12px; overflow: hidden;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.scene3d canvas { display: block; width: 100%; height: 100%; }
+.tip3d {
+  position: absolute; pointer-events: none; padding: 4px 8px; border-radius: 6px;
+  background: rgba(20, 14, 8, .9); color: var(--ink); font-size: .75rem; white-space: nowrap; transform: translate(12px, 12px);
+}
+.bar3d { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bar3d label { display: flex; align-items: center; gap: 8px; color: var(--ink-dim); font-size: .8125rem; }
+.bar3d input[type=range] { width: 140px; accent-color: #c99a5b; }
+.hint3d { color: var(--ink-dim); font-size: .75rem; margin-left: auto; }
+@media (max-width: 700px) { .hint3d { margin-left: 0; } }
+body.mode-3d .twin-help { display: none; }

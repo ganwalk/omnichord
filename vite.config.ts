@@ -34,6 +34,8 @@ function serviceWorker(): Plugin {
 export default defineConfig({
   plugins: [serviceWorker()],
   build: {
+    // The 3D view (three.js) is its own chunk, loaded only when opened.
+    chunkSizeWarningLimit: 700,
     rolldownOptions: {
       // The app, plus the digital twin of the physical instrument (twin.html).
       input: { main: 'index.html', twin: 'twin.html' },

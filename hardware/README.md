@@ -111,22 +111,30 @@ npm run dev    # depois abra http://localhost:5173/twin.html
 - Depois de mudar o painel, rode `node hardware/painel/gerar.cjs`: o gêmeo
   passa a usar o layout novo.
 
-## Modelo 3D (`3d/`)
+## Modelo 3D
+
+O 3D faz parte do gêmeo digital: abra `twin.html#3d` (ou o botão **3D** no topo).
+É o mesmo instrumento ao vivo: as telas mostram as telas do gêmeo, os pads
+acendem, os sliders e o encoder se mexem e as cordas brilham quando tocadas.
+Dá para tocar no próprio 3D (pads, sliders, encoder, botão de ligar e
+strumplate); arrastar em qualquer outro lugar gira a vista. Vistas: tocar, frente,
+de cima, traseira, por dentro e explodida. Passe o mouse numa peça para ver o
+nome; nos cabos aparece também o comprimento.
 
 ```bash
-node hardware/painel/gerar.cjs            # painel, peças, cabos (model.json)
-node hardware/3d/gerar-3d.cjs             # visualizador: 3d/out/omniharp-3d.html
+node hardware/painel/gerar.cjs            # painel, peças, cabos (layout.json, model.json)
+node hardware/3d/capturar-telas.mjs       # fotografa as telas do gêmeo para os desenhos
+node hardware/painel/gerar.cjs            # de novo, para os desenhos usarem as fotos
 python3 hardware/3d/modelo_step.py        # CAD: 3d/out/omniharp.step (pip install cadquery-ocp)
 ```
 
-- **`omniharp-3d.html`**: abre no navegador. Gira, aproxima, vistas de frente, de
-  cima, da traseira e por dentro, e vista explodida. Passe o mouse numa peça para
-  ver o nome; nos cabos aparece também o comprimento.
 - **`omniharp.step`**: o conjunto inteiro para Onshape, Fusion ou FreeCAD, com nome
   e cor em cada peça: moldura, base, sarrafos, travessa, painel com os furos reais,
   pads, botões, placas, conectores, conectores da traseira e todos os cabos.
 - **Fiação:** `painel/out/fiacao.md` lista cada cabo (de onde sai, aonde vai, tipo e
   comprimento com folga). O gerador confere se algum cabo atravessa uma peça.
+- **Telas nos desenhos:** os PDFs, a prévia e o 3D usam fotos das telas do próprio
+  gêmeo (`tela-robo.png`, `tela-acorde.png`), tiradas por `capturar-telas.mjs`.
 
 ### Placas e cabos
 

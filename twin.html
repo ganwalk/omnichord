@@ -11,10 +11,27 @@
 <body>
   <header class="twin-head">
     <h1>OMNIHARP · GÊMEO DIGITAL</h1>
-    <p>O painel do instrumento físico, em tamanho proporcional, com o som do app. <a href="/">Abrir o app</a></p>
+    <div class="twin-modes" role="group" aria-label="Vista">
+      <button type="button" data-mode="2d" aria-pressed="true">Painel</button>
+      <button type="button" data-mode="3d" aria-pressed="false">3D</button>
+    </div>
+    <p>O instrumento físico, com o som do app. <a href="/">Abrir o app</a></p>
   </header>
 
   <main class="twin-stage" id="stage" aria-label="OmniHarp físico"></main>
+
+  <section class="twin-3d" id="view3d" aria-label="OmniHarp físico em 3D" hidden>
+    <div class="scene3d" id="scene3d"><div class="tip3d" hidden></div></div>
+    <div class="bar3d" role="toolbar" aria-label="Vistas do 3D">
+      <button type="button" data-view="play" aria-pressed="true">Tocar</button>
+      <button type="button" data-view="front" aria-pressed="false">Frente</button>
+      <button type="button" data-view="top" aria-pressed="false">De cima</button>
+      <button type="button" data-view="back" aria-pressed="false">Traseira</button>
+      <button type="button" data-view="inside" aria-pressed="false">Por dentro</button>
+      <label for="explode">Explodir <input type="range" id="explode" min="0" max="100" value="0"></label>
+      <span class="hint3d">Toque nos pads, sliders, encoder e strumplate para tocar · arraste o resto para girar · roda ou pinça para zoom</span>
+    </div>
+  </section>
 
   <section class="twin-help">
     <p><b>Ligar:</b> botão ⏻ no canto (ou Enter). O som só começa depois de ligar.</p>
@@ -23,6 +40,7 @@
     <p><b>Sliders:</b> arraste para cima ou para baixo. O valor aparece na tela do robô.</p>
     <p><b>MENU:</b> gire com a rodinha do mouse ou arrastando; clique para apertar. Tem tom, LEDs das teclas, sentido da strumplate e brilho das telas.</p>
     <p><b>Teclas de função:</b> PLAY (ritmo), ARP, estilos, modos, OCT −/+ (até duas oitavas para cada lado), MUTE, KEY. TAP: bata no tempo da música e o ritmo acompanha; o LED dela pisca na batida. SHIFT + ◀/▶ STYLE ajusta o tempo de 1 em 1.</p>
+    <p><b>3D:</b> o botão 3D no topo mostra o mesmo instrumento por inteiro, ao vivo. Dá para tocar nele também; arraste fora dos controles para girar.</p>
     <p><b>Pads:</b> de silicone, com um LED colorido embaixo de cada um. O acorde tocado acende forte e, com um tom escolhido, os acordes do tom acendem fraco.</p>
   </section>
 

@@ -18,6 +18,7 @@ import {
 import { bindKeyboard } from '../ui/keyboard';
 import { Robot } from '../ui/robot';
 import { SCREEN_H, SCREEN_W, Screen } from './screen';
+import type { TwinApi } from './api';
 import { LAYOUT, buildPanel, strumIndex } from './panel';
 
 // ═══ Twin-only preferences (per browser) ═══
@@ -291,8 +292,10 @@ function refreshKeys(): void {
   }
 }
 
+const ledsOn = new Set<string>();
 function setLed(id: string, on: boolean): void {
   view.leds.get(id)?.classList.toggle('on', on);
+  if (on) ledsOn.add(id); else ledsOn.delete(id);
 }
 
 function syncLeds(): void {
@@ -333,6 +336,8 @@ function rebuildStrumNotes(): void {
   arpIndices = distinctStringIndices(strumNotes);
 }
 
+const pluckTimes: number[] = [];
+
 function atAudioTime(time: number, fn: () => void): void {
   setTimeout(fn, Math.max(0, (time - engine.ctx.currentTime) * 1000));
 }
@@ -342,6 +347,7 @@ function playString(idx: number, vel: number, time: number): void {
   if (midi === undefined) return;
   pluck(engine, midi, vel, time);
   atAudioTime(time, () => {
+    pluckTimes[idx] = performance.now();
     const s = view.strings[idx];
     s.classList.remove('plucked');
     void s.getBoundingClientRect();
@@ -551,21 +557,25 @@ for (const [id, g] of view.keys) {
   const [t, r] = id.split(':').map(Number);
   bindKey(g, () => selectChord(r, CHORD_TYPES[t]));
 }
-for (const [action, g] of view.fnKeys) {
-  if (action === 'shift') bindKey(g, () => { shift = true; }, () => { shift = false; });
-  else bindKey(g, () => { if (powered) FN[action]?.(); });
+function fnPad(action: string, down: boolean): void {
+  if (action === 'shift') { shift = down; return; }
+  if (down && powered) FN[action]?.();
 }
+
+for (const [action, g] of view.fnKeys) bindKey(g, () => fnPad(action, true), () => fnPad(action, false));
 view.power.addEventListener('click', togglePower);
+
+/** Move a slider to `pos` (0 front … 1 back) and show its value on the robot's screen. */
+function sliderTo(setting: string, pos: number): void {
+  pos = Math.min(1, Math.max(0, pos));
+  setSlider(setting, setting === 'bpm' ? BPM_MIN + pos * (BPM_MAX - BPM_MIN) : pos);
+  const v = setting === 'bpm' ? String(settings.bpm) : `${Math.round(pos * 100)}%`;
+  flash(`${SLIDER_NAMES[setting]} ${v}`);
+}
 
 for (const [setting, s] of view.sliders) {
   placeSlider(setting);
-  const drag = (e: PointerEvent): void => {
-    const { y } = view.toMm(e);
-    const pos = Math.min(1, Math.max(0, (s.y2 - y) / (s.y2 - s.y1)));
-    setSlider(setting, setting === 'bpm' ? BPM_MIN + pos * (BPM_MAX - BPM_MIN) : pos);
-    const v = setting === 'bpm' ? String(settings.bpm) : `${Math.round(pos * 100)}%`;
-    flash(`${SLIDER_NAMES[setting]} ${v}`);
-  };
+  const drag = (e: PointerEvent): void => sliderTo(setting, (s.y2 - view.toMm(e).y) / (s.y2 - s.y1));
   s.hit.addEventListener('pointerdown', e => {
     e.preventDefault();
     s.hit.setPointerCapture(e.pointerId);
@@ -593,31 +603,38 @@ for (const [setting, s] of view.sliders) {
 }
 
 // Strumplate: one strum per finger; a fast move plucks every string in between.
+const MAX_STRING_GAP = 0.015;
+const strumPointers = new Map<number, { idx: number; time: number }>();
+
+function strumDown(id: number, y: number, timeStamp: number): void {
+  if (!powered) return;
+  engine.boot(settings);
+  const idx = strumIndex(y, LAYOUT.strum, prefs.lowAtBottom);
+  strumPointers.set(id, { idx, time: timeStamp });
+  playString(idx, 1, engine.ctx.currentTime);
+}
+
+function strumMove(id: number, y: number, timeStamp: number): void {
+  const prev = strumPointers.get(id);
+  if (!prev) return;
+  const idx = strumIndex(y, LAYOUT.strum, prefs.lowAtBottom);
+  if (idx === prev.idx) return;
+  const dir = Math.sign(idx - prev.idx), count = Math.abs(idx - prev.idx);
+  const gap = Math.min((timeStamp - prev.time) / 1000 / count, MAX_STRING_GAP);
+  for (let k = 1; k <= count; k++) playString(prev.idx + k * dir, 1, engine.ctx.currentTime + (k - 1) * gap);
+  strumPointers.set(id, { idx, time: timeStamp });
+}
+
 {
-  const MAX_STRING_GAP = 0.015;
-  const pointers = new Map<number, { idx: number; time: number }>();
   const hit = view.strumHit;
-  const indexAt = (e: PointerEvent): number => strumIndex(view.toMm(e).y, LAYOUT.strum, prefs.lowAtBottom);
   hit.addEventListener('pointerdown', e => {
     if (!powered) return;
     e.preventDefault();
     hit.setPointerCapture(e.pointerId);
-    engine.boot(settings);
-    const idx = indexAt(e);
-    pointers.set(e.pointerId, { idx, time: e.timeStamp });
-    playString(idx, 1, engine.ctx.currentTime);
+    strumDown(e.pointerId, view.toMm(e).y, e.timeStamp);
   });
-  hit.addEventListener('pointermove', e => {
-    const prev = pointers.get(e.pointerId);
-    if (!prev) return;
-    const idx = indexAt(e);
-    if (idx === prev.idx) return;
-    const dir = Math.sign(idx - prev.idx), count = Math.abs(idx - prev.idx);
-    const gap = Math.min((e.timeStamp - prev.time) / 1000 / count, MAX_STRING_GAP);
-    for (let k = 1; k <= count; k++) playString(prev.idx + k * dir, 1, engine.ctx.currentTime + (k - 1) * gap);
-    pointers.set(e.pointerId, { idx, time: e.timeStamp });
-  });
-  const end = (e: PointerEvent): void => { pointers.delete(e.pointerId); };
+  hit.addEventListener('pointermove', e => strumMove(e.pointerId, view.toMm(e).y, e.timeStamp));
+  const end = (e: PointerEvent): void => { strumPointers.delete(e.pointerId); };
   hit.addEventListener('pointerup', end);
   hit.addEventListener('pointercancel', end);
 }
@@ -636,10 +653,66 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && powered) void engine.resume();
 });
 
+// ═══ The 3D view: same instrument, seen and played in 3D (loaded on demand) ═══
+
+const api: TwinApi = {
+  get powered() { return powered; },
+  padLevel(type, root) {
+    if (!powered || !prefs.keyLeds) return 0;
+    const t = CHORD_TYPES[type];
+    if (selRoot === root && selType === t) return 2;
+    return settings.key !== null && diatonicChords(settings.key).has(`${t.id}:${root}`) ? 1 : 0;
+  },
+  led: id => ledsOn.has(id),
+  sliderPos,
+  get encoderAngle() { return encAngle; },
+  pluckedAt: idx => pluckTimes[idx] ?? -Infinity,
+  get lowAtBottom() { return prefs.lowAtBottom; },
+  screens: view.screens,
+  togglePower,
+  pressPad: (type, root) => selectChord(root, CHORD_TYPES[type]),
+  fnPad,
+  setSlider: sliderTo,
+  encoderTurn,
+  encoderPush,
+  strumDown,
+  strumMove,
+  strumUp: id => { strumPointers.delete(id); },
+};
+
+const view3dEl = document.getElementById('view3d')!;
+const modeBtns = document.querySelectorAll<HTMLButtonElement>('[data-mode]');
+let view3d: Promise<{ setView(name: string): void; setExplode(e: number): void }> | null = null;
+
+function setMode(mode: '2d' | '3d'): void {
+  const is3d = mode === '3d';
+  stage.hidden = is3d;
+  view3dEl.hidden = !is3d;
+  document.body.classList.toggle('mode-3d', is3d);
+  modeBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+  if (is3d && !view3d) view3d = import('./view3d').then(m => m.mount3D(document.getElementById('scene3d')!, api));
+  // Keep the address in step (#3d), so a link can open straight into the 3D view.
+  const want = is3d ? '#3d' : '';
+  if (location.hash !== want) {
+    try { history.replaceState(null, '', want || location.pathname + location.search); } catch { /* sandboxed frame */ }
+  }
+}
+modeBtns.forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode as '2d' | '3d')));
+document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-view]').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+  void view3d?.then(v => v.setView(b.dataset.view!));
+}));
+document.getElementById('explode')!.addEventListener('input', e => {
+  const value = Number((e.target as HTMLInputElement).value) / 100;
+  void view3d?.then(v => v.setExplode(value));
+});
+window.addEventListener('hashchange', () => setMode(location.hash === '#3d' ? '3d' : '2d'));
+
 // ═══ Init ═══
 
 view.placeStrings(prefs.lowAtBottom);
 stage.classList.add('off');
+setMode(location.hash === '#3d' ? '3d' : '2d');
 applyBrightness();
 syncLeds();
 refreshKeys();

@@ -18,6 +18,16 @@ const path = require('path');
 
 const OUT = path.join(__dirname, 'out');
 
+/** The twin's screens, photographed by hardware/3d/capturar-telas.mjs (if they exist). */
+const screenShot = name => {
+  const file = path.join(OUT, name);
+  return fs.existsSync(file) ? 'data:image/png;base64,' + fs.readFileSync(file).toString('base64') : null;
+};
+const SHOTS = { robot: screenShot('tela-robo.png'), seg: screenShot('tela-acorde.png') };
+const STATE = (() => {
+  try { return JSON.parse(fs.readFileSync(path.join(OUT, 'estado.json'), 'utf8')); } catch { return null; }
+})();
+
 // ── Parameters ──────────────────────────────────────────────────────────────
 //
 // Two zones, each one a separate panel part (and later one PCB each):
@@ -234,7 +244,8 @@ ROWS.forEach(([label, color], r) => {
   for (let i = 0; i < 12; i++) {
     const cx = colX(i + 0.5);
     rect(cx - KEY_CUT / 2, cy - KEY_CUT / 2, KEY_CUT, KEY_CUT, KEY_CUT_R);
-    guides.push({ type: 'rect', x: cx - CAP / 2, y: cy - CAP / 2, w: CAP, h: CAP, role: 'key', fill: color });
+    const lit = STATE?.chord?.type === r && STATE?.chord?.root === i;   // the pad the twin is playing
+    guides.push({ type: 'rect', x: cx - CAP / 2, y: cy - CAP / 2, w: CAP, h: CAP, role: 'key', fill: color, lit });
     twin.keys.push({ type: r, root: i, x: cx, y: cy, color });
   }
 });
@@ -497,7 +508,17 @@ function cutSvg(c) {
   return `<path d="${slotPath(c)}"/>`;
 }
 
+/** Mix a #rrggbb colour toward white. */
+function lighten(hex, amount) {
+  const v = parseInt(hex.slice(1), 16), ch = c => Math.round(c + (255 - c) * amount);
+  return `rgb(${ch(v >> 16)}, ${ch((v >> 8) & 255)}, ${ch(v & 255)})`;
+}
+
 function guideSvg(g, visual) {
+  if (visual && (g.type === 'robot' || g.type === 'seg') && SHOTS[g.type]) {
+    const [aw, ah] = SCREEN_ACTIVE;
+    return `<image href="${SHOTS[g.type]}" x="${f(g.x - aw / 2)}" y="${f(g.y - ah / 2)}" width="${aw}" height="${ah}" preserveAspectRatio="none"/>`;
+  }
   if (g.type === 'robot') {
     return `<text class="robot" x="${f(g.x)}" y="${f(g.y + 1)}">(◉ω◉)</text>` +
       `<text class="robot small" x="${f(g.x)}" y="${f(g.y + 8)}">CHORD!</text>`;
@@ -505,9 +526,12 @@ function guideSvg(g, visual) {
   if (g.type === 'seg') return `<text class="seg" x="${f(g.x)}" y="${f(g.y + 4)}">C#m7</text>`;
   if (g.type === 'line') return `<line class="g-${g.role}" x1="${f(g.x1)}" y1="${f(g.y1)}" x2="${f(g.x2)}" y2="${f(g.y2)}"/>`;
   if (g.type === 'circle') return `<circle class="g-${g.role}" cx="${f(g.cx)}" cy="${f(g.cy)}" r="${g.r}"/>`;
-  const fill = visual && g.fill ? ` style="fill:${g.fill}"` : '';
-  const r = g.role === 'key' || g.role === 'fnkey' ? 2 : g.role === 'knob' ? 1.5 : 0.5;
-  return `<rect class="g-${g.role}" x="${f(g.x)}" y="${f(g.y)}" width="${f(g.w)}" height="${f(g.h)}" rx="${r}"${fill}/>`;
+  const fill = visual && g.fill ? ` style="fill:${g.lit ? lighten(g.fill, 0.45) : g.fill}"` : '';
+  const r = g.role === 'key' || g.role === 'fnkey' ? 3 : g.role === 'knob' ? 1.5 : 0.5;
+  const glow = visual && g.lit
+    ? `<rect x="${f(g.x - 2)}" y="${f(g.y - 2)}" width="${f(g.w + 4)}" height="${f(g.h + 4)}" rx="${r + 2}" fill="${lighten(g.fill, 0.6)}" opacity=".45"/>`
+    : '';
+  return `${glow}<rect class="g-${g.role}" x="${f(g.x)}" y="${f(g.y)}" width="${f(g.w)}" height="${f(g.h)}" rx="${r}"${fill}/>`;
 }
 
 function svg(visual) {
@@ -594,7 +618,11 @@ function model() {
     cuts: cuts.slice(1),
     parts,
     cables: cables.map(c => ({ ...c, length: cableLength(c), radius: cableRadius(c), width: cableWidth(c) })),
-    keys: [...twin.keys.map(k => ({ x: k.x, y: k.y, color: k.color })), ...twin.fnKeys.map(k => ({ x: k.x, y: k.y, color: '#3a3a3a' }))],
+    keys: [
+      ...twin.keys.map(k => ({ x: k.x, y: k.y, color: k.color, type: k.type, root: k.root })),
+      ...twin.fnKeys.map(k => ({ x: k.x, y: k.y, color: '#3a3a3a', action: k.action })),
+    ],
+    state: STATE,
     sliders: twin.sliders, encoder: twin.encoder, power: twin.power, screens: twin.screens, strum: twin.strum,
     leds: twin.leds, mounts: twin.mounts,
   };
