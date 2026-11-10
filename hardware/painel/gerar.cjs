@@ -56,7 +56,7 @@ const SLIDER_SLOT_W = 3;   // CHECK: lever width + clearance
 const SLIDER_CAP = [10, 18]; // CHECK: slider knob footprint (guide)
 
 const OLED_WIN = [58, 31];     // CHECK: 2.42" SSD1309 visible area + 1 mm
-const SEG_WIN = [102, 21];     // CHECK: 2 × 0.54" quad 14-segment displays side by side
+const SEG_WIN = [102, OLED_WIN[1]]; // CHECK: 2 × 0.54" quad 14-segment displays side by side; same height as SYS MONITOR (the 19 mm digits sit centred behind the tinted acrylic)
 const POWER_D = 16;            // CHECK: power push button
 const LED_D = 3;               // status LEDs (light through the panel)
 const ENCODER_D = 7;           // CHECK: rotary encoder thread
