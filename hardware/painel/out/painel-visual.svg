@@ -17,7 +17,6 @@
     .g-knob { fill: #c49a62; stroke: #6b4a26; stroke-width: .3; }
     .g-strip { fill: #d4b048; }
     .g-part, .g-seam { fill: none; stroke: none; }
-    .silkline { fill: none; stroke: #bbb; stroke-width: .3; }
     .robot, .seg { fill: #00e060; }
     .title, .scale { fill: #d8c7a8; stroke: none; }
     .scale-line { stroke: #d8c7a8; }
@@ -413,10 +412,6 @@
 <rect class="g-strip" x="291.6" y="284.525" width="100" height="6.138" rx="0.5"/>
 <rect class="g-strip" x="291.6" y="293.663" width="100" height="6.138" rx="0.5"/></g>
   <rect class="cut" x="0" y="0" width="408.6" height="317.3" style="fill:none"/>
-  <g><rect class="silkline" x="42.8" y="78.8" width="112.7" height="65.2" rx="1.5"/>
-<rect class="silkline" x="157.1" y="78.8" width="55.55" height="103.2" rx="1.5"/>
-<rect class="silkline" x="214.25" y="78.8" width="55.55" height="103.2" rx="1.5"/>
-<rect class="silkline" x="286.6" y="12" width="110" height="60" rx="1.5"/></g>
   <g><text class="silk" x="42" y="18" style="font-size:6px;text-anchor:start;font-weight:bold">OMNIHARP</text>
 <text class="silk" x="86" y="18" style="font-size:2.4px;text-anchor:start;font-weight:normal">CHORD SYNTH · GANWALK</text>
 <text class="silk" x="227.88" y="16.9" style="font-size:2.2px;text-anchor:start;font-weight:normal">BEAT</text>

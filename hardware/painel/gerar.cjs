@@ -86,10 +86,10 @@ const GROUPS = [
   { title: 'MIXER', from: 0, to: 5,
     sliders: [[0.5, 'MASTER'], [1.5, 'CHORD'], [2.5, 'STRUM'], [3.5, 'TONE'], [4.5, 'REVERB'], [5.5, 'GLIDE']],
     keys: ['SHIFT', 'MUTE', 'KEY', 'OCT −', 'OCT +', 'F1'] },
-  { title: 'RHYTHM', from: 6, to: 8, box: true,
+  { title: 'RHYTHM', from: 6, to: 8,
     sliders: [[7, 'TEMPO'], [8, 'VOLUME']],
     keys: ['◀ STYLE', 'STYLE ▶', 'PLAY'] },
-  { title: 'ARPEGGIATOR', from: 9, to: 11, box: true,
+  { title: 'ARPEGGIATOR', from: 9, to: 11,
     sliders: [[10, 'SPEED'], [11, 'VOLUME']],
     keys: ['◀ MODE', 'MODE ▶', 'ARP'] },
 ];
@@ -118,7 +118,6 @@ const STRUM_PITCH = (strumH - 2 * STRUM_PAD) / STRUM_N;
 
 const cuts = [];    // {type:'rect', x,y,w,h,r} | {type:'circle', cx,cy,r} | {type:'slot', cx,y1,y2,w}
 const texts = [];   // {x,y,s,t,anchor,weight}
-const boxes = [];   // silkscreen outlines {x,y,w,h}
 const guides = [];  // {type:'rect'|'circle'|'line'|'robot'|'seg', ..., role, fill}
 
 const rect = (x, y, w, h, r = 0) => cuts.push({ type: 'rect', x, y, w, h, r });
@@ -175,7 +174,6 @@ const fnKeyY = fnY0 + 7 + CAP / 2;
 for (const g of GROUPS) {
   const x1 = colX(g.from) + 0.8, x2 = colX(g.to + 1) - 0.8;
   text((x1 + x2) / 2, sliderY0 + 4.5, g.title, 2.3, 'middle', 'bold');
-  boxes.push({ x: x1, y: sliderY0 + 0.8, w: x2 - x1, h: (g.box ? fnY0 + FN_H : sliderLabelY + 2.5) - sliderY0 - 0.8 });
 
   for (const [col, label] of g.sliders) {
     const x = colX(col);
@@ -210,10 +208,9 @@ ROWS.forEach(([label, color], r) => {
 });
 
 // Right column: speaker grille on top, strumplate below. The grille is a
-// rectangle as wide as the strumplate, framed the same way, so the column
-// reads as one block; a rectangular speaker sits under its centre.
+// rectangle as wide as the strumplate, so the column reads as one block;
+// a rectangular speaker sits under its centre.
 const spkY0 = topY0, spkH = strumY0 - 6 - topY0;
-boxes.push({ x: strumX0, y: spkY0, w: STRUM_W, h: spkH });
 const rowStep = GRILLE_PITCH * Math.sqrt(3) / 2;
 const nRows = Math.floor((spkH - 2 * GRILLE_INSET - GRILLE_HOLE) / rowStep) + 1;
 const nCols = Math.floor((STRUM_W - 2 * GRILLE_INSET - GRILLE_HOLE - GRILLE_PITCH / 2) / GRILLE_PITCH) + 1;
@@ -280,7 +277,6 @@ function svg(visual) {
     .g-knob { fill: #c49a62; stroke: #6b4a26; stroke-width: .3; }
     .g-strip { fill: #d4b048; }
     .g-part, .g-seam { fill: none; stroke: none; }
-    .silkline { fill: none; stroke: #bbb; stroke-width: .3; }
     .robot, .seg { fill: #00e060; }
     .title, .scale { fill: #d8c7a8; stroke: none; }
     .scale-line { stroke: #d8c7a8; }` : `
@@ -291,7 +287,6 @@ function svg(visual) {
     .silk { fill: #000; }
     .g-key, .g-fnkey, .g-knob, .g-strip, .g-part { fill: none; stroke: #999; stroke-width: .15; stroke-dasharray: 1 .8; }
     .g-seam { stroke: #08f; stroke-width: .3; stroke-dasharray: 4 2; }
-    .silkline { fill: none; stroke: #000; stroke-width: .2; }
     .robot, .seg { fill: #7a9; }
     .title, .scale { fill: #000; }
     .scale-line { stroke: #000; }`;
@@ -317,7 +312,6 @@ function svg(visual) {
   <g class="cut">${cuts.slice(1).map(cutSvg).join('\n')}</g>
   <g class="guides">${guides.map(g => guideSvg(g, visual)).join('\n')}</g>
   <rect class="cut" x="0" y="0" width="${f(W)}" height="${f(H)}" style="fill:none"/>
-  <g>${boxes.map(b => `<rect class="silkline" x="${f(b.x)}" y="${f(b.y)}" width="${f(b.w)}" height="${f(b.h)}" rx="1.5"/>`).join('\n')}</g>
   <g>${texts.map(t => `<text class="silk" x="${f(t.x)}" y="${f(t.y)}" style="font-size:${t.s}px;text-anchor:${t.anchor};font-weight:${t.weight}">${esc(t.t)}</text>`).join('\n')}</g>
 </g>
 <line class="scale-line" x1="${OX}" y1="${scaleY}" x2="${OX + 100}" y2="${scaleY}"/>${ticks}
