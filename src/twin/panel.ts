@@ -96,6 +96,10 @@ export function buildPanel(stage: HTMLElement, L: Layout = LAYOUT): PanelView {
       <stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/>
       <stop offset="1" stop-color="#000" stop-opacity=".18"/>
     </linearGradient>
+    <radialGradient id="padSheen" cx=".5" cy=".4" r=".7">
+      <stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".7" stop-color="#fff" stop-opacity=".06"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".12"/>
+    </radialGradient>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6"/></filter>
     <filter id="ledGlow" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="1"/></filter>`;
 
@@ -176,15 +180,16 @@ export function buildPanel(stage: HTMLElement, L: Layout = LAYOUT): PanelView {
   }
 
   // Keys: an LED glow under each cap (per-key LEDs), then the cap
+  // Silicone pads: soft rounded squares, lit from below in their row colour.
+  // The glow behind stands for the pad's LED shining brighter (selected / in key).
   const keyCap = (x: number, y: number, fill: string, cls: string): SVGGElement => {
     const g = el('g', { class: cls }, svg);
     const c = L.cap;
-    el('rect', { x: x - c / 2 - 1.5, y: y - c / 2 - 1.5, width: c + 3, height: c + 3, rx: 3, class: 'twin-key-glow', filter: 'url(#glow)' }, g);
-    el('rect', { x: x - c / 2 + 0.3, y: y - c / 2 + 0.8, width: c, height: c, rx: 2, fill: '#000', opacity: 0.55 }, g);
+    el('rect', { x: x - c / 2 - 1.5, y: y - c / 2 - 1.5, width: c + 3, height: c + 3, rx: 4, class: 'twin-key-glow', filter: 'url(#glow)' }, g);
+    el('rect', { x: x - c / 2 + 0.2, y: y - c / 2 + 0.5, width: c, height: c, rx: 3, fill: '#000', opacity: 0.5 }, g);
     const cap = el('g', { class: 'twin-cap' }, g);
-    el('rect', { x: x - c / 2, y: y - c / 2, width: c, height: c, rx: 2, fill }, cap);
-    el('rect', { x: x - c / 2, y: y - c / 2, width: c, height: c, rx: 2, fill: 'url(#capShine)' }, cap);
-    el('rect', { x: x - c / 2 + 2.2, y: y - c / 2 + 1.6, width: c - 4.4, height: c - 4.6, rx: 1.4, fill: '#fff', opacity: 0.05 }, cap);
+    el('rect', { x: x - c / 2, y: y - c / 2, width: c, height: c, rx: 3, fill }, cap);
+    el('rect', { x: x - c / 2, y: y - c / 2, width: c, height: c, rx: 3, fill: 'url(#padSheen)' }, cap);
     return g;
   };
   const keys = new Map<string, SVGGElement>();

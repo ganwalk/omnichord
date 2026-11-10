@@ -57,7 +57,7 @@ body {
 /* Keys */
 .twin-key { cursor: pointer; }
 .twin-cap { transition: transform 60ms; }
-.twin-key.down .twin-cap { transform: translateY(.6px); filter: brightness(.82); }
+.twin-key.down .twin-cap { transform: scale(.97); transform-box: fill-box; transform-origin: center; filter: brightness(.85); }
 .twin-key-glow { fill: #fff6d8; opacity: 0; transition: opacity 120ms; }
 .twin-key.soft .twin-key-glow { opacity: .28; }
 .twin-key.lit .twin-key-glow { opacity: .85; }

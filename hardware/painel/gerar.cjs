@@ -36,8 +36,12 @@ const OUT = path.join(__dirname, 'out');
 
 const M = 12;              // panel margin
 const P = 19.05;           // key pitch (MX standard); every control column uses it
-const KEY_CUT = 14;        // MX plate cut-out (square)
-const CAP = 18;            // keycap footprint, guide only (DSA/XDA ≈ 18 mm)
+// Pads: one translucent silicone keypad under the panel, each pad poking up
+// through its own hole, lit from below by an RGB LED (SPD / Launchpad style).
+const CAP = 17;            // CHECK: pad face, square with rounded corners
+const PAD_H = 4;           // CHECK: pad height above the panel (shallow, like a drum-pad controller)
+const KEY_CUT = 17.6;      // panel hole: pad + 0.3 mm all round
+const KEY_CUT_R = 2.2;     // hole corner radius
 const LABEL_W = 30;        // column left of the grid: power button, row labels
 const GAP = 24;            // between the left zone and the right column: room for the seam rail underneath
 
@@ -210,7 +214,7 @@ for (const g of GROUPS) {
 
   g.keys.forEach(([label, action], i) => {
     const cx = colX(g.from + i + 0.5);
-    rect(cx - KEY_CUT / 2, fnKeyY - KEY_CUT / 2, KEY_CUT, KEY_CUT);
+    rect(cx - KEY_CUT / 2, fnKeyY - KEY_CUT / 2, KEY_CUT, KEY_CUT, KEY_CUT_R);
     guides.push({ type: 'rect', x: cx - CAP / 2, y: fnKeyY - CAP / 2, w: CAP, h: CAP, role: 'fnkey' });
     text(cx, fnKeyY - CAP / 2 - 1.6, label, 2.1);
     twin.fnKeys.push({ action, x: cx, y: fnKeyY });
@@ -229,7 +233,7 @@ ROWS.forEach(([label, color], r) => {
   text(gridX0 - 4, cy + 1, label, 2.8, 'end', 'bold');
   for (let i = 0; i < 12; i++) {
     const cx = colX(i + 0.5);
-    rect(cx - KEY_CUT / 2, cy - KEY_CUT / 2, KEY_CUT, KEY_CUT);
+    rect(cx - KEY_CUT / 2, cy - KEY_CUT / 2, KEY_CUT, KEY_CUT, KEY_CUT_R);
     guides.push({ type: 'rect', x: cx - CAP / 2, y: cy - CAP / 2, w: CAP, h: CAP, role: 'key', fill: color });
     twin.keys.push({ type: r, root: i, x: cx, y: cy, color });
   }
@@ -268,48 +272,163 @@ twin.strum = { x: strumX0, y: strumY0, w: STRUM_W, h: strumH, n: STRUM_N, pad: S
 // (0 = top of the base, INNER_H = underside of the panel). Sizes are typical
 // for the parts named in the README; the CHECK values decide the real fit.
 
-const parts = [];  // {name, x, y, w, d, z0, z1, kind}
-const part = (name, x, y, w, d, z0, z1, kind = 'elec') => parts.push({ name, x, y, w, d, z0, z1, kind });
+const parts = [];  // {name, label, x, y, w, d, z0, z1, kind, on}
+/** `on`: the part it is mounted on (they touch on purpose). `label`: name in Portuguese, for the 3D view. */
+const part = (name, x, y, w, d, z0, z1, kind = 'elec', label = name, on = null) =>
+  parts.push({ name, label, x, y, w, d, z0, z1, kind, on });
 const UNDER = INNER_H;     // panel underside
 
 // Wood: cleats along the four walls, rail under the seam
-part('Cleat, back', 0, 0, W, CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood');
-part('Cleat, front', 0, H - CLEAT[0], W, CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood');
-part('Cleat, left', 0, CLEAT[0], CLEAT[0], H - 2 * CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood');
-part('Cleat, right', W - CLEAT[0], CLEAT[0], CLEAT[0], H - 2 * CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood');
-part('Seam rail', seamX - RAIL_W / 2, CLEAT[0], RAIL_W, H - 2 * CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood');
+part('Cleat, back', 0, 0, W, CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood', 'Sarrafo (trás)');
+part('Cleat, front', 0, H - CLEAT[0], W, CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood', 'Sarrafo (frente)');
+part('Cleat, left', 0, CLEAT[0], CLEAT[0], H - 2 * CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood', 'Sarrafo (esquerda)');
+part('Cleat, right', W - CLEAT[0], CLEAT[0], CLEAT[0], H - 2 * CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood', 'Sarrafo (direita)');
+part('Seam rail', seamX - RAIL_W / 2, CLEAT[0], RAIL_W, H - 2 * CLEAT[0], UNDER - CLEAT[1], UNDER, 'wood', 'Travessa sob a emenda do painel');
 
 // Hanging from the panel
-part('Power button', M + LABEL_W / 2 - 9, dispMid - 3 - 9, 18, 18, UNDER - 28, UNDER);
-for (const [col, name] of [[scr1, 'Screen (robot)'], [scr2, 'Screen (chord)']]) {
-  part(name, colX(col) - SCREEN_MODULE[0] / 2, dispMid - SCREEN_MODULE[1] / 2, SCREEN_MODULE[0], SCREEN_MODULE[1], UNDER - 14, UNDER);
+part('Power button', M + LABEL_W / 2 - 9, dispMid - 3 - 9, 18, 18, UNDER - 28, UNDER, 'elec', 'Botão liga/desliga (com LED)');
+const scrX0 = colX(scr1) - SCREEN_MODULE[0] / 2;
+part('Display board', scrX0, dispMid - SCREEN_MODULE[1] / 2 - 2, encX + 12 - scrX0, SCREEN_MODULE[1] + 4, UNDER - 17.6, UNDER - 16, 'board',
+  'Placa das telas e do encoder');
+for (const [col, name, label] of [[scr1, 'Screen (robot)', 'Tela 2,4" (robô)'], [scr2, 'Screen (chord)', 'Tela 2,4" (acorde)']]) {
+  part(name, colX(col) - SCREEN_MODULE[0] / 2, dispMid - SCREEN_MODULE[1] / 2, SCREEN_MODULE[0], SCREEN_MODULE[1], UNDER - 14, UNDER, 'elec', label, 'Display board');
 }
-part('Encoder', encX - 7, dispMid - 7, 14, 14, UNDER - 15, UNDER);   // EC11-type, nut on the panel
-part('Slider board', gridX0 - 3, slotTop - 9, gridW + 5, slotBottom - slotTop + 18, UNDER - 16, UNDER);
-part('Key board (84 keys)', gridX0 - 3, fnKeyY - 11, gridW + 5, gridY0 + 6 * P + 1 - (fnKeyY - 11), UNDER - 9, UNDER);
-part('Strumplate + acrylic', strumX0 - 1, strumY0 - 1, STRUM_W + 2, strumH + 2, UNDER - 3, UNDER);
-part('MPR121 #1', strumX0 + 4, strumY0 + strumH / 3 - 10, 26, 20, UNDER - 15, UNDER - 3);
-part('MPR121 #2', strumX0 + 4, strumY0 + 2 * strumH / 3 - 10, 26, 20, UNDER - 15, UNDER - 3);
-part('Speaker box', strumX0 + (STRUM_W - 80) / 2, spkY0 + spkH / 2 - 24, 80, 48, UNDER - 36, UNDER);
+part('Encoder', encX - 7, dispMid - 7, 14, 14, UNDER - 15, UNDER, 'elec', 'Encoder MENU (porca no painel)', 'Display board');
+part('Slider board', gridX0 - 3, slotTop - 9, gridW + 5, slotBottom - slotTop + 18, UNDER - 16, UNDER, 'board', 'Placa dos sliders (10)');
+part('Pad board (84 pads)', gridX0 - 3, fnKeyY - 11, gridW + 5, gridY0 + 6 * P + 1 - (fnKeyY - 11), UNDER - 5, UNDER, 'board',
+  'Pads de silicone + placa com contatos e LEDs RGB');
+part('Strumplate + acrylic', strumX0 - 1, strumY0 - 1, STRUM_W + 2, strumH + 2, UNDER - 3, UNDER, 'board', 'Strumplate (placa) + acrílico');
+part('MPR121 #1', strumX0 + 4, strumY0 + strumH / 3 - 10, 26, 20, UNDER - 15, UNDER - 3, 'elec', 'Sensor MPR121 (cordas 1–12)', 'Strumplate + acrylic');
+part('MPR121 #2', strumX0 + 4, strumY0 + 2 * strumH / 3 - 10, 26, 20, UNDER - 15, UNDER - 3, 'elec', 'Sensor MPR121 (cordas 13–24)', 'Strumplate + acrylic');
+part('Speaker box', strumX0 + (STRUM_W - 80) / 2, spkY0 + spkH / 2 - 24, 80, 48, UNDER - 36, UNDER, 'elec', 'Caixa do alto-falante (fechada)');
 
-// On the base
-part('Teensy 4.1 + Audio Shield', gridX0 + 10, gridY0 + 15, 75, 45, 0, 26);
-part('Battery 2 × 18650', colX(6), gridY0 + 20, 77, 41, 0, 22);
-part('Charger / 5 V boost', colX(6) + 82, gridY0 + 25, 25, 22, 0, 10);
-part('Amplifier PAM8302A', strumX0 + 70, strumY0 + 30, 22, 18, 0, 12);
+// On the base: main board with the Teensy, battery, charger, amplifier
+const MB = { x: gridX0 + 8, y: gridY0 + 8, w: 110, d: 62 };
+part('Main board', MB.x, MB.y, MB.w, MB.d, 4, 5.6, 'board', 'Placa principal (sobre espaçadores de 4 mm)');
+part('Teensy 4.1 + Audio Shield', MB.x + 8, MB.y + 22, 61, 31, 5.6, 27, 'elec', 'Teensy 4.1 + Audio Shield (empilhados)', 'Main board');
+const BAT = { x: colX(6.5), y: gridY0 + 20, w: 77, d: 41 };
+part('Battery 2 × 18650', BAT.x, BAT.y, BAT.w, BAT.d, 0, 22, 'elec', 'Baterias 2 × 18650 (suporte)');
+const CHG = { x: BAT.x + BAT.w + 5, y: gridY0 + 25, w: 25, d: 22 };
+part('Charger / 5 V boost', CHG.x, CHG.y, CHG.w, CHG.d, 0, 10, 'elec', 'Carregador + elevador 5 V');
+const AMP = { x: strumX0 + 70, y: strumY0 + 30, w: 22, d: 18 };
+part('Amplifier PAM8302A', AMP.x, AMP.y, AMP.w, AMP.d, 0, 12, 'elec', 'Amplificador PAM8302A');
 
-// Through the back wall, left to right (they reach this far into the box)
+// Rear I/O board: every connector is soldered to it and pokes through the back wall
 const JACKS = [
-  ['USB-C', 14, 24], ['MIDI IN', 22, 22], ['MIDI OUT', 22, 22], ['SYNC', 12, 22], ['SUSTAIN', 22, 32],
-  ['PHONES', 12, 22], ['LINE R', 22, 32], ['LINE L/MONO', 22, 32], ['SPEAKER', 12, 20],
+  ['USB-C', 14, 24, 'USB-C (MIDI + carga)'], ['MIDI IN', 22, 22, 'MIDI IN (DIN)'], ['MIDI OUT', 22, 22, 'MIDI OUT (DIN)'],
+  ['SYNC', 12, 22, 'SYNC (P2)'], ['SUSTAIN', 22, 32, 'Pedal SUSTAIN (P10)'], ['PHONES', 12, 22, 'Fone (P2)'],
+  ['LINE R', 22, 32, 'Saída LINE R (P10)'], ['LINE L/MONO', 22, 32, 'Saída LINE L/MONO (P10)'], ['SPEAKER', 12, 20, 'Chave do alto-falante'],
 ];
+const IO = { x: 44, y: 1, d: 46 };
 {
   let x = 50;
-  for (const [name, w, d] of JACKS) { part(name, x, 0, w, d, 2, 24, 'jack'); x += w + 8; }
+  for (const [name, w, d, label] of JACKS) { part(name, x, 0, w, d, 2.2, 24, 'jack', label, 'I/O board'); x += w + 8; }
+  IO.w = x - 8 + 4 - IO.x;
+}
+part('I/O board', IO.x, IO.y, IO.w, IO.d, 0.6, 2.2, 'board', 'Placa de conectores (traseira)');
+
+// Connectors: [name, label, x, y, w, d, z0, z1, mounted on]
+const CONN = [
+  ['J disp', 'Conector 16 vias (telas)', MB.x + 4, MB.y + 2, 28, 9, 5.6, 14.6, 'Main board'],
+  ['J sliders', 'Conector 14 vias (sliders)', MB.x + 36, MB.y + 2, 25, 9, 5.6, 14.6, 'Main board'],
+  ['J io', 'Conector 16 vias (traseira)', MB.x + 66, MB.y + 2, 28, 9, 5.6, 14.6, 'Main board'],
+  ['J pads', 'Conector 20 vias (pads)', MB.x + 74, MB.y + 28, 33, 9, 5.6, 14.6, 'Main board'],
+  ['J leds', 'Conector 3 vias (LEDs dos pads)', MB.x + 74, MB.y + 44, 8, 6, 5.6, 12, 'Main board'],
+  ['J btn', 'Conector 4 vias (botão + LED)', MB.x + 4, MB.y + 55, 10, 6, 5.6, 12, 'Main board'],
+  ['J pwr', 'Conector 2 vias (5 V)', MB.x + 74, MB.y + 54, 7, 6, 5.6, 12, 'Main board'],
+  ['J amp', 'Conector 5 vias (amplificador)', MB.x + 86, MB.y + 54, 12, 6, 5.6, 12, 'Main board'],
+  ['J strum', 'Conector 5 vias (strumplate)', MB.x + 100, MB.y + 54, 8, 5, 5.6, 11, 'Main board'],
+  ['J disp/b', 'Conector 16 vias', colX(scr2) - 14, dispMid + 14, 28, 9, UNDER - 26.6, UNDER - 17.6, 'Display board'],
+  ['J sliders/b', 'Conector 14 vias', gridX0 + 2, slotBottom - 6, 25, 9, UNDER - 25, UNDER - 16, 'Slider board'],
+  ['J io/b', 'Conector 16 vias', 150, 36, 28, 9, 2.2, 11, 'I/O board'],
+  ['J pads/b', 'Conector 20 vias', MB.x + 74, MB.y + 28, 33, 9, UNDER - 14, UNDER - 5, 'Pad board (84 pads)'],
+  ['J leds/b', 'Conector 3 vias', MB.x + 96, MB.y + 44, 8, 6, UNDER - 11, UNDER - 5, 'Pad board (84 pads)'],
+];
+for (const [name, label, x, y, w, d, z0, z1, on] of CONN) part(name, x, y, w, d, z0, z1, 'conn', label, on);
+
+/** Centre of a part's face: 'top', 'bottom' or a side ('-y' = back). */
+function at(name, face = 'top', dz = 0) {
+  const p = parts.find(q => q.name === name);
+  if (!p) throw new Error(`no part ${name}`);
+  const cx = p.x + p.w / 2, cy = p.y + p.d / 2, cz = (p.z0 + p.z1) / 2;
+  return {
+    top: [cx, cy, p.z1 + dz], bottom: [cx, cy, p.z0 - dz],
+    '-y': [cx, p.y - dz, cz], '+y': [cx, p.y + p.d + dz, cz], '-x': [p.x - dz, cy, cz], '+x': [p.x + p.w + dz, cy, cz],
+  }[face];
 }
 
-// Parts screwed onto another part touch it on purpose.
-const MOUNTED_ON = { 'MPR121 #1': 'Strumplate + acrylic', 'MPR121 #2': 'Strumplate + acrylic' };
+// ── Cables: what connects to what, and the way they run inside the box ──
+// kind: 'ribbon' (flat, 1.27 mm pitch), 'wires' (a bundle; one colour per wire), 'usb'.
+const cables = [];
+const cable = (name, kind, wires, from, to, path, colors) => cables.push({ name, kind, wires, from, to, path, colors });
+const RED = '#c0392b', BLACK = '#222', YEL = '#e1b12c', GRN = '#27ae60', BLU = '#2e86de', WHT = '#ddd', ORG = '#e67e22';
+
+{
+  const d = at('J disp/b', 'bottom'), m = at('J disp', 'top');
+  cable('Telas + encoder', 'ribbon', 16, 'J disp/b', 'J disp', [d, [d[0], d[1], 21], [d[0], d[1] + 30, 21], [m[0], m[1] - 6, 21], [m[0], m[1], m[2]]]);
+}
+{
+  const s0 = at('J sliders/b', 'bottom'), m = at('J sliders', 'top');
+  cable('Sliders', 'ribbon', 14, 'J sliders/b', 'J sliders', [s0, [s0[0], s0[1], 17.5], [m[0], m[1] - 8, 17.5], [m[0], m[1], m[2]]]);
+}
+{
+  const r = at('J io/b', 'top'), m = at('J io', 'top');
+  cable('Conectores traseiros', 'ribbon', 16, 'J io/b', 'J io', [r, [r[0], r[1] + 14, 12.5], [m[0], m[1] - 10, 12.5], [m[0], m[1], m[2]]]);
+}
+{
+  const a = at('J pads/b', 'bottom'), b = at('J pads', 'top');
+  cable('Pads (matriz 7 × 12)', 'ribbon', 20, 'J pads/b', 'J pads', [a, [a[0], a[1] + 2, (a[2] + b[2]) / 2], b]);
+}
+{
+  const a = at('J leds/b', 'bottom'), b = at('J leds', 'top');
+  cable('LEDs dos pads', 'wires', 3, 'J leds/b', 'J leds', [a, [a[0], a[1], 20], [b[0], b[1], 18], b], [RED, BLACK, YEL]);
+}
+{
+  const b = at('Power button', 'bottom'), j = at('J btn', 'top');
+  cable('Botão + LED de power', 'wires', 4, 'Power button', 'J btn',
+    [b, [b[0], b[1], 9], [b[0] + 4, b[1] + 30, 8], [b[0] + 4, j[1], 8], [j[0], j[1], j[2]]], [RED, BLACK, GRN, WHT]);
+}
+{
+  const u = at('USB-C', '+y'), t = at('Teensy 4.1 + Audio Shield', '-x');
+  cable('USB (painel → Teensy)', 'usb', 4, 'USB-C', 'Teensy 4.1 + Audio Shield',
+    [u, [u[0], u[1] + 12, 12], [IO.x - 5, IO.y + IO.d + 12, 9], [IO.x - 5, t[1] - 10, 8], [t[0] - 8, t[1], 8], [t[0], t[1], 8]], [BLACK]);
+}
+{
+  const m = at('MPR121 #1', '-x'), j = at('J strum', '+y');
+  const yRun = MB.y + MB.d + 8;
+  cable('Strumplate (I²C)', 'wires', 5, 'MPR121 #1', 'J strum',
+    [m, [strumX0 + 2, m[1] + 8, 18], [strumX0 + 2, yRun, 9], [j[0], yRun, 9], [j[0], j[1], j[2]]], [RED, BLACK, BLU, YEL, WHT]);
+  const m2 = at('MPR121 #2', '-x'), m1 = at('MPR121 #1', '-x');
+  cable('Entre os dois MPR121', 'wires', 4, 'MPR121 #1', 'MPR121 #2', [m1, [m1[0] - 2, m1[1], m1[2]], [m2[0] - 2, m2[1], m2[2]], m2], [RED, BLACK, BLU, YEL]);
+}
+{
+  const j = at('J amp', '+y'), a = at('Amplifier PAM8302A', '+y');
+  const yRun = MB.y + MB.d + 4;
+  cable('Áudio + 5 V para o amplificador', 'wires', 5, 'J amp', 'Amplifier PAM8302A',
+    [j, [j[0], yRun, 7], [a[0], yRun, 7], [a[0], a[1], a[2]]], [RED, BLACK, WHT, ORG, GRN]);
+  const s = at('Speaker box', 'bottom'), am = at('Amplifier PAM8302A', '-y');
+  cable('Alto-falante', 'wires', 2, 'Amplifier PAM8302A', 'Speaker box', [am, [am[0], am[1] - 12, 8], [s[0] + 20, s[1] + 30, 5], [s[0] + 20, s[1] + 20, s[2]]], [RED, BLACK]);
+}
+{
+  const c = at('Charger / 5 V boost', '+y'), j = at('J pwr', '+y');
+  const yRun = MB.y + MB.d + 12;
+  cable('5 V para a placa principal', 'wires', 2, 'Charger / 5 V boost', 'J pwr', [c, [c[0], yRun, 5], [j[0], yRun, 5], [j[0], j[1], j[2]]], [RED, BLACK]);
+  const b = at('Battery 2 × 18650', '+x'), c2 = at('Charger / 5 V boost', '-x');
+  cable('Bateria', 'wires', 2, 'Battery 2 × 18650', 'Charger / 5 V boost', [b, [b[0] + 2.5, b[1] - 6, 6], [c2[0], c2[1] - 4, 6], [c2[0], c2[1], c2[2]]], [RED, BLACK]);
+  const v = at('I/O board', '+y'), c3 = at('Charger / 5 V boost', '-y');
+  cable('Carga (5 V do USB-C)', 'wires', 2, 'I/O board', 'Charger / 5 V boost', [[CHG.x + 6, IO.y + IO.d, 3], [CHG.x + 6, c3[1] - 10, 4], [c3[0], c3[1], c3[2]]], [RED, BLACK]);
+  void v;
+}
+
+/** Cable length along its path, plus 15 % slack, rounded up to 10 mm. */
+const cableLength = c => {
+  let L = 0;
+  for (let i = 1; i < c.path.length; i++) L += Math.hypot(...c.path[i].map((v, k) => v - c.path[i - 1][k]));
+  // A flat cable needs room to fold at both connectors; short wires need room for the crimp.
+  return Math.max(c.kind === 'ribbon' ? 60 : 50, Math.ceil((L * 1.15) / 10) * 10);
+};
+const cableRadius = c => (c.kind === 'ribbon' ? 0.6 : c.kind === 'usb' ? 2.5 : 0.8 + 0.35 * c.wires);
+const cableWidth = c => (c.kind === 'ribbon' ? c.wires * 1.27 + 1 : 2 * cableRadius(c));
 
 /** Pairs closer than `min` mm (negative clearance = they overlap). */
 function clashes(min = 1) {
@@ -319,12 +438,39 @@ function clashes(min = 1) {
     const a = parts[i], b = parts[j];
     if (a.kind === 'wood' && b.kind === 'wood') continue;        // joined on purpose
     if (a.kind === 'jack' && b.kind === 'wood') continue;        // jacks pass under the back cleat by design
-    if (MOUNTED_ON[a.name] === b.name || MOUNTED_ON[b.name] === a.name) continue;
+    if (a.on === b.name || b.on === a.name || (a.on && a.on === b.on)) continue;
     const c = Math.max(gap(a.x, a.x + a.w, b.x, b.x + b.w), gap(a.y, a.y + a.d, b.y, b.y + b.d), gap(a.z0, a.z1, b.z0, b.z1));
     if (c < min) out.push({ a: a.name, b: b.name, c });
   }
   for (const p of parts) {
     if (p.x < 0 || p.y < 0 || p.x + p.w > W || p.y + p.d > H || p.z0 < 0 || p.z1 > INNER_H) out.push({ a: p.name, b: 'enclosure', c: -1 });
+  }
+  // Cables: sample every 2 mm and check the cable's own thickness against every
+  // part except the ones it plugs into (and what those are mounted on).
+  for (const c of cables) {
+    // Flat ribbons: thin in height, wide sideways. Round cables: the same both ways.
+    const rz = cableRadius(c), rxy = c.kind === 'ribbon' ? cableWidth(c) / 2 : rz;
+    const ends = new Set([c.from, c.to]);
+    for (const e of [c.from, c.to]) { const p = parts.find(q => q.name === e); if (p?.on) ends.add(p.on); }
+    for (const p of parts) {
+      if (ends.has(p.name) || (p.on && ends.has(p.on) && p.kind === 'conn')) continue;
+      let worst = Infinity;
+      for (let i = 1; i < c.path.length; i++) {
+        const A = c.path[i - 1], B = c.path[i], L = Math.hypot(B[0] - A[0], B[1] - A[1], B[2] - A[2]);
+        const n = Math.max(1, Math.ceil(L / 2));
+        for (let k = 0; k <= n; k++) {
+          // Skip the last 4 mm at each end, where the cable enters its connector.
+          const t = k / n, along = t * L;
+          if ((i === 1 && along < 4) || (i === c.path.length - 1 && L - along < 4)) continue;
+          const q = A.map((v, j) => v + (B[j] - v) * t);
+          // Gap between the part's box and the cable's own box around this point
+          const gx = Math.max(p.x - q[0], q[0] - (p.x + p.w)) - rxy, gy = Math.max(p.y - q[1], q[1] - (p.y + p.d)) - rxy;
+          const gz = Math.max(p.z0 - q[2], q[2] - p.z1) - rz;
+          worst = Math.min(worst, Math.max(gx, gy, gz));
+        }
+      }
+      if (worst < 0) out.push({ a: `cable “${c.name}”`, b: p.name, c: worst });
+    }
   }
   return out;
 }
@@ -421,6 +567,73 @@ function svg(visual) {
 `;
 }
 
+// ── Panel texture for the 3D viewer: print + windows, without caps or knobs ──
+
+function textura() {
+  const keep = g => g.role === 'strip' || g.type === 'robot' || g.type === 'seg';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}mm" height="${f(H)}mm" viewBox="0 0 ${f(W)} ${f(H)}">
+<style>
+  text { font-family: 'DejaVu Sans', Arial, sans-serif; }
+  .robot, .seg { text-anchor: middle; font-family: 'DejaVu Sans Mono', 'Courier New', monospace; font-weight: bold; fill: #00e060; }
+  .robot { font-size: 7px; } .robot.small { font-size: 3px; letter-spacing: .8px; } .seg { font-size: 11px; letter-spacing: 1px; }
+  .cut { fill: #050505; } .g-strip { fill: #d4b048; } .silk { fill: #eee; }
+</style>
+<rect width="${f(W)}" height="${f(H)}" fill="#141414"/>
+<g class="cut">${cuts.slice(1).map(cutSvg).join('')}</g>
+<g>${guides.filter(keep).map(g => guideSvg(g, true)).join('')}</g>
+<g>${texts.map(t => `<text class="silk" x="${f(t.x)}" y="${f(t.y)}" style="font-size:${t.s}px;text-anchor:${t.anchor};font-weight:${t.weight};letter-spacing:${t.spacing}px">${esc(t.t)}</text>`).join('')}</g>
+</svg>`;
+}
+
+/** Everything the 3D model needs, in panel millimetres (hardware/3d/ reads it). */
+function model() {
+  return {
+    panel: { w: W, h: H, t: PANEL_T, recess: PANEL_RECESS },
+    frame: { t: FRAME_T, h: FRAME_H, base: BASE_T, inner: INNER_H, cleat: CLEAT, rail: RAIL_W, seamX },
+    cap: CAP, padH: PAD_H, keyCut: KEY_CUT, sliderCap: SLIDER_CAP, slotW: SLIDER_SLOT_W,
+    cuts: cuts.slice(1),
+    parts,
+    cables: cables.map(c => ({ ...c, length: cableLength(c), radius: cableRadius(c), width: cableWidth(c) })),
+    keys: [...twin.keys.map(k => ({ x: k.x, y: k.y, color: k.color })), ...twin.fnKeys.map(k => ({ x: k.x, y: k.y, color: '#3a3a3a' }))],
+    sliders: twin.sliders, encoder: twin.encoder, power: twin.power, screens: twin.screens, strum: twin.strum,
+    leds: twin.leds, mounts: twin.mounts,
+  };
+}
+
+/** Wiring list (Portuguese), from the cables above: what to buy and how long. */
+function fiacao() {
+  const BOARD = {
+    'Main board': 'placa principal', 'Display board': 'placa das telas', 'Slider board': 'placa dos sliders',
+    'I/O board': 'placa traseira', 'Pad board (84 pads)': 'placa dos pads',
+  };
+  const label = name => {
+    const p = parts.find(q => q.name === name);
+    if (!p) return name;
+    return p.kind === 'conn' ? `${p.label.split(' (')[0]}, ${BOARD[p.on] ?? p.on}` : p.label;
+  };
+  const kind = c => (c.kind === 'ribbon' ? `cabo flat ${c.wires} vias (IDC, passo 1,27 mm)`
+    : c.kind === 'usb' ? 'cabo USB-C de painel → micro-USB' : `${c.wires} fios 24–26 AWG (conector JST)`);
+  const rows = cables.map(c => `| ${c.name} | ${label(c.from)} | ${label(c.to)} | ${kind(c)} | ${cableLength(c)} mm |`);
+  return `# Fiação do OmniHarp
+
+Gerado por \`hardware/painel/gerar.cjs\` a partir das posições das placas e do
+caminho de cada cabo dentro da caixa. O comprimento já inclui 15 % de folga.
+Não edite à mão: mude o gerador e rode de novo.
+
+| Cabo | De | Para | Tipo | Comprimento |
+|---|---|---|---|---|
+${rows.join('\n')}
+
+## Entradas e saídas (parede de trás, da esquerda para a direita para quem está tocando)
+
+${JACKS.map(([, , , l]) => `- ${l}`).join('\n')}
+
+## Placas
+
+${parts.filter(p => p.kind === 'board').map(p => `- **${p.label}**: ${f(p.w)} × ${f(p.d)} mm`).join('\n')}
+`;
+}
+
 // ── DXF (R12, cut lines only, y up) ─────────────────────────────────────────
 
 function dxf() {
@@ -461,7 +674,10 @@ function dxf() {
 // ── Inside view: plan + front-to-back section ────────────────────────────────
 
 function interno() {
-  const KIND = { wood: ['#d9b98a', '#8a5a2b'], elec: ['#b7d4ea', '#2a5d86'], jack: ['#f2c38f', '#a0521c'] };
+  const KIND = {
+    wood: ['#d9b98a', '#8a5a2b'], elec: ['#b7d4ea', '#2a5d86'], jack: ['#f2c38f', '#a0521c'],
+    board: ['#a9d6b8', '#1f5d3a'], conn: ['#6b6b6b', '#222'],
+  };
   const T = FRAME_T, PADI = 12;
   const planX = PADI + T, planY = PADI + 14 + T;              // inner frame corner on the sheet
   const secTop = planY + H + T + 26;                           // section drawing area
@@ -496,10 +712,16 @@ ${label(PADI, PADI + 3, 'PLAN — inside, seen from above with the panel removed
       ? `<text x="${f(cx)}" y="${f(cy)}" font-size="1.9" text-anchor="middle" transform="rotate(-90 ${f(cx)} ${f(cy)})">${esc(p.name)}</text>`
       : label(cx, cy + 0.8, `${p.name} · ${p.z1 - p.z0 | 0} mm`);
   }
+  // Cables, as seen from above
+  for (const c of cables) {
+    const pts = c.path.map(([x, y]) => `${f(planX + x)},${f(planY + y)}`).join(' ');
+    const col = c.kind === 'ribbon' ? '#8d8d8d' : c.kind === 'usb' ? '#222' : (c.colors?.[0] ?? '#444');
+    o += `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="${f(Math.min(cableWidth(c), 6))}" stroke-opacity=".75" stroke-linejoin="round" stroke-linecap="round"/>`;
+  }
   o += `<line x1="${planX + cutX}" y1="${planY - T - 3}" x2="${planX + cutX}" y2="${planY + H + T + 3}" stroke="#d00" stroke-width=".35" stroke-dasharray="3 1.5"/>`;
   o += label(planX + cutX, planY - T - 4.5, 'A', 3);
   o += label(planX - T, planY + H + T + 6, `Outside ${f(W + 2 * T)} × ${f(H + 2 * T)} × ${FRAME_H} mm · wood ${T} mm on every side · inside height ${f(INNER_H)} mm (base to panel)`, 2.6, 'start');
-  o += label(planX - T, planY + H + T + 10, 'Back wall at the top (connectors), player at the bottom. Blue = electronics, orange = connectors, wood = cleats and seam rail.', 2.6, 'start');
+  o += label(planX - T, planY + H + T + 10, 'Back wall at the top (connectors), player at the bottom. Blue = electronics, green = boards, orange = connectors, grey = ribbon cables, coloured lines = wires.', 2.6, 'start');
 
   // Section A: cut at x = cutX, back on the left
   o += label(PADI, secTop - 6, `SECTION A — front-to-back cut at the red line (back on the left, player on the right)`, 3.2, 'start');
@@ -528,7 +750,7 @@ ${label(PADI, PADI + 3, 'PLAN — inside, seen from above with the panel removed
 
 // ── PDFs and PNG via the pre-installed Playwright Chromium ──────────────────
 
-async function render(corteSvg, visualSvg, internoSvg) {
+async function render(corteSvg, visualSvg, internoSvg, texturaSvg) {
   let chromium;
   try { ({ chromium } = require('playwright')); } catch {
     console.warn('Playwright not found: skipping PDF/PNG (SVG and DXF are ready).');
@@ -563,6 +785,12 @@ async function render(corteSvg, visualSvg, internoSvg) {
   await page.setContent(`<style>body{margin:0}svg{width:${SHEET_W * pxPerMm}px;height:${SHEET_H * pxPerMm}px;display:block}</style>${visualSvg}`);
   await page.screenshot({ path: path.join(OUT, 'painel-visual.png') });
 
+  // Panel texture for the 3D viewer, 4 px per mm
+  const tpx = 4;
+  await page.setViewportSize({ width: Math.ceil(W * tpx), height: Math.ceil(H * tpx) });
+  await page.setContent(`<style>body{margin:0}svg{width:${W * tpx}px;height:${H * tpx}px;display:block}</style>${texturaSvg}`);
+  await page.screenshot({ path: path.join(OUT, 'painel-textura.png') });
+
   // PNG of the inside view
   const m = internoSvg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
   const [iw, ih] = [+m[1] * pxPerMm, +m[2] * pxPerMm];
@@ -585,7 +813,9 @@ async function render(corteSvg, visualSvg, internoSvg) {
   })) + '\n');
   const inside = interno();
   fs.writeFileSync(path.join(OUT, 'painel-interno.svg'), inside);
-  await render(corte, visual, inside);
+  fs.writeFileSync(path.join(OUT, 'model.json'), JSON.stringify(r3(model())) + '\n');
+  fs.writeFileSync(path.join(OUT, 'fiacao.md'), fiacao());
+  await render(corte, visual, inside, textura());
   console.log(`Panel ${f(W)} × ${f(H)} mm (with wood frame ${f(W + 2 * FRAME_T)} × ${f(H + 2 * FRAME_T)} mm)`);
   const report = clashes();
   console.log(report.length ? `Clearance problems:\n${report.map(r => `  ${r.a} × ${r.b}: ${f(r.c)} mm`).join('\n')}` : 'Clearance check: OK');
