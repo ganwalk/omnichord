@@ -20,10 +20,10 @@ firmware vai reproduzir a mesma lógica de `src/theory.ts`, `patterns.ts`, `arp.
 | Extras | P10 para pedal de sustain, P2 de sincronia (pulso de tempo) |
 | Teclas | 72 de acorde (6 × 12) + 12 de função, switches estilo MX em **soquetes hot-swap** (sem solda nos switches), teclas lisas compradas prontas, uma cor por fileira |
 | Legendas | No painel: notas acima das colunas e tipo de acorde ao lado das fileiras (opção "c") |
-| Strumplate | PCB com 24 trilhas horizontais (passo de ~12 mm, coluna de altura total na direita) e plano de terra, lida por 2 × MPR121, coberta por acrílico de 1 mm. Nunca coberta por madeira. |
-| Controles | 10 sliders soldados na placa (o painel só tem os rasgos), chave de oitava de 3 posições, encoder com botão (MENU) |
+| Strumplate | Coluna à direita, abaixo do alto-falante: PCB com 24 trilhas horizontais (passo de ~9 mm) e plano de terra, lida por 2 × MPR121, coberta por acrílico de 1 mm. Nunca coberta por madeira. |
+| Controles | 10 sliders soldados na placa (o painel só tem os rasgos), encoder com botão (MENU), oitava pelas teclas OCT − / OCT + (o valor aparece no visor) |
 | Visores | "Sys monitor": OLED verde de 2,42" (SSD1309) com o robô, os mesmos rostos e tempos do app. "Chord display": 2 × mostradores verdes de 14 segmentos com 4 caracteres (HT16K33). Os dois ficam num barramento I²C separado do sensor da strumplate. |
-| Painel | Placa de circuito usada como painel: fibra de vidro preta, serigrafia branca, acabamento dourado (ENIG), dividida em 2–3 partes. A maquete é em MDF cortado a laser. |
+| Painel | Placa de circuito usada como painel: fibra de vidro preta, serigrafia branca, acabamento dourado (ENIG), dividida em 2 partes (controles e coluna da direita), presas à madeira por parafusos M3. A maquete é em MDF cortado a laser. |
 | Moldura | Madeira maciça (freijó ou cedro, com detalhes em imbuia), base de compensado multilaminado, rebaixo onde o painel apoia, buchas roscadas M4, furos oblongos para a madeira se mover |
 | Blindagem | Fita de alumínio por dentro da moldura, ligada ao terra; aterramento em estrela |
 
@@ -43,14 +43,41 @@ Gera em `hardware/painel/out/`:
 | `painel-corte.svg` | Cortes (vermelho), serigrafia (preto), peças (cinza tracejado), moldura (marrom) |
 | `painel-visual.svg` / `.png` | Como o instrumento deve ficar pronto |
 
-Layout: a **strumplate ocupa toda a lateral direita**, com as 24 cordas na
-horizontal, empilhadas de trás (agudo) para a frente (grave, perto de quem toca),
-como no app com o celular em pé. À esquerda, de cima para baixo: power, marca e
-visores; sliders e encoder MENU; uma fileira de 12 teclas de função alinhada às
-colunas da grade; e a grade de acordes, com a grade do alto-falante à direita dela.
+### Layout
 
-Medidas do rascunho: painel com **483 × 319 mm**; com a moldura, **543 × 349 mm**.
-Strumplate de 110 × 295 mm, com cordas a cada ~12 mm.
+Duas zonas, e cada uma é uma parte do painel:
+
+- **Esquerda (controles):** tudo segue as 12 colunas das teclas (19,05 mm), então
+  os controles têm exatamente a largura da grade de acordes. De cima para baixo:
+  1. Marca e LEDs BEAT/MIDI.
+  2. POWER, SYS MONITOR (robô, colunas 1–3), CHORD DISPLAY (colunas 4–9) e o
+     encoder MENU (colunas 10–12).
+  3. Sliders em três grupos: MIXER (colunas 1–6), RHYTHM (7–9) e ARPEGGIATOR (10–12).
+  4. Teclas de função, cada uma embaixo do grupo dela. A tecla de liga/desliga
+     de cada grupo (PLAY, ARP) fica na ponta direita, mais perto da mão que
+     dedilha, com um LED ao lado. TAP tempo = SHIFT + PLAY.
+  5. Nomes das notas e a grade de 6 × 12 acordes.
+- **Direita:** alto-falante em cima e strumplate embaixo, com as 24 cordas na
+  horizontal, do agudo (fundo) ao grave (perto de quem toca), como no app com o
+  celular em pé. O firmware pode inverter a ordem.
+
+Medidas do rascunho: painel com **409 × 317 mm**; com a moldura, **469 × 347 mm**.
+Strumplate de 110 × 231 mm, com cordas a cada ~9 mm.
+
+### Pensado para a montagem
+
+- **Uma placa por zona:**
+  - placa das teclas: fileira de função + grade, a matriz 7 × 12;
+  - placa dos sliders;
+  - placa dos visores e encoder;
+  - placa da strumplate;
+  - alto-falante com amplificador, debaixo da grade de furos.
+- O painel se divide na linha azul tracejada. Debaixo dessa emenda corre uma
+  travessa de madeira que sustenta as duas partes.
+- **Furos de fixação** de 3,6 mm para parafusos M3 nas bordas e dos dois lados da
+  emenda, com folga para a madeira se mover.
+- Todas as teclas usam a mesma medida de furo e o mesmo passo, então uma única
+  placa de teclas segura as 84.
 Todas as medidas ficam no topo do `gerar.cjs`. As marcadas com `CHECK` dependem da
 peça comprada: meça com paquímetro e ajuste antes de mandar cortar.
 
