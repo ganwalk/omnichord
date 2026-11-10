@@ -3,6 +3,10 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/3d", "destination": "/twin.html" },
+    { "source": "/gemeo", "destination": "/twin.html" }
+  ],
   "headers": [
     {
       "source": "/sw.js",

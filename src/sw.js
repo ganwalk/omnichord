@@ -2,8 +2,9 @@
 // PRECACHE and writes the result to dist/sw.js.
 //
 // • Every built file is precached at install, so the app works offline.
-// • Pages are network-first (a new deploy shows up on the next visit) with the
-//   cached index.html as the offline fallback.
+// • Pages are network-first (a new deploy shows up on the next visit). Each page
+//   is cached under its own file (the app as index.html, /3d as twin.html), so
+//   visiting the twin never replaces the app's offline copy.
 // • Hashed assets are cache-first; old caches are dropped on activate.
 
 const VERSION = '__VERSION__';
@@ -32,14 +33,16 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
 
   if (req.mode === 'navigate') {
+    const path = new URL(req.url).pathname;
+    const page = path === '/' ? '/index.html' : /^\/(3d|gemeo)\/?$/.test(path) ? '/twin.html' : path;
     event.respondWith(
       fetch(req)
         .then(res => {
           const copy = res.clone();
-          if (res.ok) caches.open(CACHE).then(c => c.put('/index.html', copy));
+          if (res.ok) caches.open(CACHE).then(c => c.put(page, copy));
           return res;
         })
-        .catch(() => caches.match('/index.html')),
+        .catch(() => caches.match(page).then(hit => hit ?? caches.match('/index.html'))),
     );
     return;
   }

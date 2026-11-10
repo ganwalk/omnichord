@@ -684,6 +684,9 @@ const view3dEl = document.getElementById('view3d')!;
 const modeBtns = document.querySelectorAll<HTMLButtonElement>('[data-mode]');
 let view3d: Promise<{ setView(name: string): void; setExplode(e: number): void }> | null = null;
 
+/** The 3D page: /3d on the website (vercel.json serves twin.html there). */
+const onPath3d = (): boolean => /\/3d\/?$/.test(location.pathname);
+
 function setMode(mode: '2d' | '3d'): void {
   const is3d = mode === '3d';
   stage.hidden = is3d;
@@ -691,10 +694,11 @@ function setMode(mode: '2d' | '3d'): void {
   document.body.classList.toggle('mode-3d', is3d);
   modeBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
   if (is3d && !view3d) view3d = import('./view3d').then(m => m.mount3D(document.getElementById('scene3d')!, api));
-  // Keep the address in step (#3d), so a link can open straight into the 3D view.
-  const want = is3d ? '#3d' : '';
-  if (location.hash !== want) {
-    try { history.replaceState(null, '', want || location.pathname + location.search); } catch { /* sandboxed frame */ }
+  // Keep the address in step, so a link opens the same view: /3d (or #3d) for the 3D view.
+  const want = is3d ? (onPath3d() ? location.pathname : '#3d') : onPath3d() ? '/twin.html' : location.pathname + location.search;
+  const now = is3d && !onPath3d() ? location.hash : location.pathname + (is3d ? '' : location.search);
+  if (now !== want) {
+    try { history.replaceState(null, '', want); } catch { /* sandboxed frame */ }
   }
 }
 modeBtns.forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode as '2d' | '3d')));
@@ -706,13 +710,13 @@ document.getElementById('explode')!.addEventListener('input', e => {
   const value = Number((e.target as HTMLInputElement).value) / 100;
   void view3d?.then(v => v.setExplode(value));
 });
-window.addEventListener('hashchange', () => setMode(location.hash === '#3d' ? '3d' : '2d'));
+window.addEventListener('hashchange', () => setMode(location.hash === '#3d' || onPath3d() ? '3d' : '2d'));
 
 // ═══ Init ═══
 
 view.placeStrings(prefs.lowAtBottom);
 stage.classList.add('off');
-setMode(location.hash === '#3d' ? '3d' : '2d');
+setMode(location.hash === '#3d' || onPath3d() ? '3d' : '2d');
 applyBrightness();
 syncLeds();
 refreshKeys();

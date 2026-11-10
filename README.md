@@ -28,8 +28,11 @@ offline) e empacotado como app nativo Android/iOS com Capacitor.
 ## Instrumento físico
 
 A pasta [`hardware/`](hardware/README.md) tem o projeto da versão física: painel em
-tamanho real, vista interna com checagem de folgas e um **gêmeo digital**
-(`twin.html`) para tocar o painel físico no navegador.
+tamanho real, fiação, modelo STEP e um **gêmeo digital** para tocar o instrumento
+físico no navegador, em painel ou em 3D.
+
+- `/3d` abre o gêmeo direto no 3D (no site: `omniharp.vercel.app/3d`)
+- `/gemeo` (ou `/twin.html`) abre o gêmeo no painel
 
 ## Desenvolvimento
 

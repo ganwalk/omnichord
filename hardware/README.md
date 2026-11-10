@@ -113,7 +113,9 @@ npm run dev    # depois abra http://localhost:5173/twin.html
 
 ## Modelo 3D
 
-O 3D faz parte do gêmeo digital: abra `twin.html#3d` (ou o botão **3D** no topo).
+O 3D faz parte do gêmeo digital. No site, a página **`/3d`** abre direto nele
+(`omniharp.vercel.app/3d` depois do deploy); localmente, `twin.html#3d` ou o
+botão **3D** no topo do gêmeo.
 É o mesmo instrumento ao vivo: as telas mostram as telas do gêmeo, os pads
 acendem, os sliders e o encoder se mexem e as cordas brilham quando tocadas.
 Dá para tocar no próprio 3D (pads, sliders, encoder, botão de ligar e
