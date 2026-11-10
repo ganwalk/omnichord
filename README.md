@@ -25,6 +25,12 @@ offline) e empacotado como app nativo Android/iOS com Capacitor.
 | Celular deitado | grade com 3 linhas de acordes por vez (⇅ alterna básicos/estendidos), strumplate ao lado, controles no painel ⚙ |
 | Celular em pé | grade transposta (12 notas × 3 tipos), strumplate vertical à direita (graves embaixo), controles no painel ⚙ |
 
+## Instrumento físico
+
+A pasta [`hardware/`](hardware/README.md) tem o projeto da versão física: painel em
+tamanho real, vista interna com checagem de folgas e um **gêmeo digital**
+(`twin.html`) para tocar o painel físico no navegador.
+
 ## Desenvolvimento
 
 Requer Node 20.19+.

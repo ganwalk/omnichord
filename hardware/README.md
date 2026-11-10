@@ -42,6 +42,7 @@ Gera em `hardware/painel/out/`:
 | `painel-corte.dxf` | Só os cortes, para o corte a laser da maquete em MDF de 3 mm |
 | `painel-corte.svg` | Cortes (vermelho), serigrafia (preto), peças (cinza tracejado), moldura (marrom) |
 | `painel-visual.svg` / `.png` | Como o instrumento deve ficar pronto |
+| `layout.json` | Posição e função de cada controle, lida pelo gêmeo digital |
 | `painel-interno.svg` / `.png` | Vista de dentro (planta sem o painel + corte de frente a trás) com as peças nas posições e alturas reais, e o resultado da checagem de folgas |
 
 ### Layout
@@ -62,7 +63,7 @@ Duas zonas, e cada uma é uma parte do painel:
   horizontal, do agudo (fundo) ao grave (perto de quem toca), como no app com o
   celular em pé. O firmware pode inverter a ordem.
 
-Medidas do rascunho: painel com **417 × 305 mm**; por fora, com a moldura, **457 × 345 × 55 mm**. Por dentro há 43 mm entre a base e o painel.
+Medidas do rascunho: painel com **417 × 310 mm**; por fora, com a moldura, **457 × 350 × 55 mm**. Por dentro há 43 mm entre a base e o painel.
 Strumplate de 110 × 231 mm, com cordas a cada ~9 mm.
 
 ### Pensado para a montagem
@@ -89,6 +90,23 @@ Todas as medidas ficam no topo do `gerar.cjs`. As marcadas com `CHECK` dependem 
 peça comprada: meça com paquímetro e ajuste antes de mandar cortar.
 
 **Ao imprimir:** escolha "tamanho real" ou "100%" e confira a régua de 100 mm no rodapé.
+
+## Gêmeo digital (`twin.html`)
+
+Uma página do app que desenha **este painel** (a partir do `layout.json`) e toca
+com o mesmo motor de som:
+
+```bash
+npm run dev    # depois abra http://localhost:5173/twin.html
+```
+
+- Teclas, sliders, encoder MENU, teclas de função e strumplate vertical funcionam
+  com mouse, toque ou teclado.
+- As duas telas mostram o que as OLEDs de 128 × 64 mostrariam: o robô do app e o
+  acorde, com o menu (tom, LEDs das teclas, sentido da strumplate, brilho).
+- O brilho sob as teclas simula LEDs por tecla, um opcional para o físico.
+- Depois de mudar o painel, rode `node hardware/painel/gerar.cjs`: o gêmeo
+  passa a usar o layout novo.
 
 ## Próximas etapas
 

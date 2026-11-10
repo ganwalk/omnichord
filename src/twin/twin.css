@@ -1,0 +1,95 @@
+/* ─── Digital twin page ─── */
+
+:root {
+  --bg: #17110b;
+  --ink: #e9dcc6;
+  --ink-dim: #a8977c;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; height: 100%; }
+
+body {
+  background: radial-gradient(ellipse at 50% 0%, #2a1f12 0%, var(--bg) 70%);
+  background-color: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 16px 20px;
+  overflow-x: hidden;
+}
+
+.twin-head {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 10px;
+}
+.twin-head h1 { font-size: 1rem; letter-spacing: .12em; margin: 0; font-weight: 800; }
+.twin-head p { margin: 0; color: var(--ink-dim); font-size: .8125rem; }
+.twin-head a { color: var(--ink); }
+
+/* The stage keeps the instrument's real proportions (frame included). */
+.twin-stage {
+  position: relative;
+  width: min(100%, 1200px, calc((100vh - 140px) * var(--aspect)));
+  aspect-ratio: var(--aspect);
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .55));
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.twin-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.twin-oled { position: absolute; pointer-events: none; image-rendering: pixelated; }
+
+.silk text { fill: #e6e6e6; font-family: 'DejaVu Sans', Arial, sans-serif; }
+
+/* Keys */
+.twin-key { cursor: pointer; }
+.twin-cap { transition: transform 60ms; }
+.twin-key.down .twin-cap { transform: translateY(.6px); filter: brightness(.82); }
+.twin-key-glow { fill: #fff6d8; opacity: 0; transition: opacity 120ms; }
+.twin-key.soft .twin-key-glow { opacity: .28; }
+.twin-key.lit .twin-key-glow { opacity: .85; }
+
+/* Strumplate */
+.twin-strum-hit { cursor: crosshair; }
+.twin-string { fill: #c9a443; }
+.twin-string.plucked { animation: pluck 450ms ease-out; }
+@keyframes pluck {
+  from { fill: #fff3b8; }
+  to { fill: #c9a443; }
+}
+
+/* Sliders, encoder, power */
+.twin-slider, .twin-encoder { cursor: ns-resize; }
+.twin-power { cursor: pointer; }
+.twin-power-sym { fill: #ff5a4a; }
+.twin-power.on .twin-power-sym { fill: #00e060; }
+
+/* LEDs */
+.twin-led { fill: #2a0a0a; transition: fill 60ms; }
+.twin-led.on { fill: #ff3b30; filter: url(#ledGlow); }
+.twin-led.led-power.on, .twin-led.led-beat.on { fill: #00e060; }
+
+/* Powered off: controls dim slightly, like a cold instrument */
+.twin-stage.off .twin-string { fill: #8f7531; }
+
+.twin-help {
+  width: 100%;
+  max-width: 1200px;
+  margin-top: 12px;
+  color: var(--ink-dim);
+  font-size: .8125rem;
+  columns: 2 280px;
+  column-gap: 28px;
+}
+.twin-help p { margin: 0 0 6px; break-inside: avoid; }
+.twin-help b { color: var(--ink); }

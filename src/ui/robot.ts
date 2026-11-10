@@ -14,13 +14,16 @@ export type RobotEvent = 'chord' | 'strum' | 'beat';
 
 const EVENT_HOLD_MS: Record<RobotEvent, number> = { beat: 200, strum: 280, chord: 500 };
 
+/** Where the robot writes its lines: a DOM element, or anything with textContent (the twin's OLED). */
+export type TextSink = { textContent: string | null };
+
 export class Robot {
   private current: RobotState = 'sleep';
   private timer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
-    private readonly faceEl: HTMLElement,
-    private readonly statusEl: HTMLElement,
+    private readonly faceEl: TextSink,
+    private readonly statusEl: TextSink,
     private readonly isOn: () => boolean,
   ) {
     this.set('sleep');

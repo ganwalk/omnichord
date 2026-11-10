@@ -47,7 +47,7 @@ const STRUM_GAP = 3;       // gap between neighbouring copper strips (guide)
 const STRUM_PAD = 4;       // window margin around the strips
 
 const TOP_H = 54;          // displays band (and speaker, on the right)
-const SLIDER_H = 74;       // slider row
+const SLIDER_H = 79;       // slider row (the knobs overhang the slot ends by half their height)
 const FN_H = 30;           // function row (label + key)
 const HEADER_H = 9;        // note names above the grid
 
@@ -93,14 +93,15 @@ const ROWS = [
 // TAP tempo = SHIFT + PLAY.
 const GROUPS = [
   { title: 'MIXER', from: 0, to: 5,
-    sliders: [[0.5, 'MASTER'], [1.5, 'CHORD'], [2.5, 'STRUM'], [3.5, 'TONE'], [4.5, 'REVERB'], [5.5, 'GLIDE']],
-    keys: ['SHIFT', 'MUTE', 'KEY', 'OCT −', 'OCT +', 'F1'] },
+    sliders: [[0.5, 'MASTER', 'master'], [1.5, 'CHORD', 'chordVol'], [2.5, 'STRUM', 'strumVol'],
+      [3.5, 'TONE', 'tone'], [4.5, 'REVERB', 'reverb'], [5.5, 'GLIDE', 'glide']],
+    keys: [['SHIFT', 'shift'], ['MUTE', 'mute'], ['KEY', 'key'], ['OCT −', 'octDown'], ['OCT +', 'octUp'], ['F1', 'f1']] },
   { title: 'RHYTHM', from: 6, to: 8,
-    sliders: [[7, 'TEMPO'], [8, 'VOLUME']],
-    keys: ['◀ STYLE', 'STYLE ▶', 'PLAY'] },
+    sliders: [[7, 'TEMPO', 'bpm'], [8, 'VOLUME', 'rhythmVol']],
+    keys: [['◀ STYLE', 'stylePrev'], ['STYLE ▶', 'styleNext'], ['PLAY', 'play']] },
   { title: 'ARPEGGIATOR', from: 9, to: 11,
-    sliders: [[10, 'SPEED'], [11, 'VOLUME']],
-    keys: ['◀ MODE', 'MODE ▶', 'ARP'] },
+    sliders: [[10, 'SPEED', 'arpSpeed'], [11, 'VOLUME', 'arpVol']],
+    keys: [['◀ MODE', 'modePrev'], ['MODE ▶', 'modeNext'], ['ARP', 'arp']] },
 ];
 
 // ── Derived layout ──────────────────────────────────────────────────────────
@@ -134,14 +135,17 @@ const circle = (cx, cy, d) => cuts.push({ type: 'circle', cx, cy, r: d / 2 });
 const text = (x, y, t, s = 2.6, anchor = 'middle', weight = 'normal', spacing = 0) =>
   texts.push({ x, y, t, s, anchor, weight, spacing });
 
+// What every control is, for the digital twin (src/twin/), written to out/layout.json.
+const twin = { keys: [], fnKeys: [], sliders: [], screens: [], leds: [], grille: [], mounts: [] };
+
 // Panel outline, seam between the two panel parts, mounting holes
 rect(0, 0, W, H);
 guides.push({ type: 'line', x1: seamX, y1: 0, x2: seamX, y2: H, role: 'seam' });
 for (const [x1, x2] of [[0, seamX], [seamX, W]]) {
   const xs = [x1 + MOUNT_INSET, x2 - MOUNT_INSET];
   if (x2 - x1 > 200) xs.push((x1 + x2) / 2);
-  for (const x of xs) for (const y of [MOUNT_INSET, H - MOUNT_INSET]) circle(x, y, MOUNT_D);
-  for (const x of [x1 + MOUNT_INSET, x2 - MOUNT_INSET]) circle(x, H / 2, MOUNT_D);
+  for (const x of xs) for (const y of [MOUNT_INSET, H - MOUNT_INSET]) { circle(x, y, MOUNT_D); twin.mounts.push([x, y]); }
+  for (const x of [x1 + MOUNT_INSET, x2 - MOUNT_INSET]) { circle(x, H / 2, MOUNT_D); twin.mounts.push([x, H / 2]); }
 }
 
 // Top band: power · two identical OLED screens (robot, chord) · OMNIHARP
@@ -151,6 +155,8 @@ const dispY = topY0 + 5, dispMid = dispY + OLED_WIN[1] / 2, dispLabelY = dispY +
 circle(M + LABEL_W / 2, dispMid - 3, POWER_D);
 circle(M + LABEL_W / 2, dispMid + 12, LED_D);
 text(M + LABEL_W / 2, dispLabelY, 'POWER', 2.3);
+twin.power = { x: M + LABEL_W / 2, y: dispMid - 3, d: POWER_D };
+twin.leds.push({ id: 'power', x: M + LABEL_W / 2, y: dispMid + 12, d: LED_D });
 
 const screen = (col, label, guide) => {
   const x = colX(col) - OLED_WIN[0] / 2;
@@ -159,6 +165,7 @@ const screen = (col, label, guide) => {
     w: OLED_MODULE[0], h: OLED_MODULE[1], role: 'part' });
   guides.push({ type: guide, x: colX(col), y: dispMid });
   text(colX(col), dispLabelY, label, 2.3);
+  twin.screens.push({ id: guide === 'robot' ? 'robot' : 'chord', x, y: dispY, w: OLED_WIN[0], h: OLED_WIN[1] });
 };
 const powerEdge = M + LABEL_W / 2 + POWER_D / 2 + 3;               // power button body + 2 mm clearance
 const scr1 = (powerEdge + OLED_MODULE[0] / 2 - gridX0) / P;        // in columns
@@ -172,40 +179,49 @@ const encX = colX(12) - ENCODER_KNOB_R;
 circle(encX, dispMid, ENCODER_D);
 guides.push({ type: 'circle', cx: encX, cy: dispMid, r: ENCODER_KNOB_R, role: 'knob' });
 text(encX, dispLabelY, 'MENU · PUSH', 2.3);
+twin.encoder = { x: encX, y: dispMid, r: ENCODER_KNOB_R };
 
 const brandX = (colX(scr2) + OLED_WIN[0] / 2 + encX - ENCODER_KNOB_R) / 2;
 text(brandX, dispMid + 2.4, 'OMNIHARP', 6.5, 'middle', '900', 0.8);
 
 // Slider row + function row, by group
-const slotTop = sliderY0 + 9;
+// The knob overhangs the slot ends by half its height: keep the group title
+// above it and the label below it, at both ends of the travel.
+const slotTop = sliderY0 + 6.5 + SLIDER_CAP[1] / 2;
 const slotBottom = slotTop + SLIDER_TRAVEL + SLIDER_SLOT_W;
-const sliderLabelY = slotBottom + 6.5;
+const sliderLabelY = slotBottom - SLIDER_SLOT_W / 2 + SLIDER_CAP[1] / 2 + 4;
 const fnKeyY = fnY0 + 7 + CAP / 2;
 
 for (const g of GROUPS) {
   const x1 = colX(g.from) + 0.8, x2 = colX(g.to + 1) - 0.8;
   text((x1 + x2) / 2, sliderY0 + 4.5, g.title, 2.3, 'middle', 'bold');
   // Tempo pulse LED beside the RHYTHM title (MIDI activity shows on the SYS MONITOR)
-  if (g.title === 'RHYTHM') circle((x1 + x2) / 2 + 9, sliderY0 + 3.7, LED_D - 0.5);
+  if (g.title === 'RHYTHM') {
+    circle((x1 + x2) / 2 + 9, sliderY0 + 3.7, LED_D - 0.5);
+    twin.leds.push({ id: 'beat', x: (x1 + x2) / 2 + 9, y: sliderY0 + 3.7, d: LED_D - 0.5 });
+  }
 
-  for (const [col, label] of g.sliders) {
+  for (const [col, label, setting] of g.sliders) {
     const x = colX(col);
     cuts.push({ type: 'slot', cx: x, y1: slotTop, y2: slotBottom, w: SLIDER_SLOT_W });
     guides.push({ type: 'rect', x: x - SLIDER_CAP[0] / 2, y: (slotTop + slotBottom) / 2 - SLIDER_CAP[1] / 2,
       w: SLIDER_CAP[0], h: SLIDER_CAP[1], role: 'knob' });
     text(x, sliderLabelY, label, 2.2);
+    twin.sliders.push({ setting, x, y1: slotTop + SLIDER_SLOT_W / 2, y2: slotBottom - SLIDER_SLOT_W / 2 });
   }
 
-  g.keys.forEach((label, i) => {
+  g.keys.forEach(([label, action], i) => {
     const cx = colX(g.from + i + 0.5);
     rect(cx - KEY_CUT / 2, fnKeyY - KEY_CUT / 2, KEY_CUT, KEY_CUT);
     guides.push({ type: 'rect', x: cx - CAP / 2, y: fnKeyY - CAP / 2, w: CAP, h: CAP, role: 'fnkey' });
     text(cx, fnKeyY - CAP / 2 - 1.6, label, 2.1);
+    twin.fnKeys.push({ action, x: cx, y: fnKeyY });
   });
 }
 // Status LEDs of the two on/off keys, beside their labels
 for (const [g, i] of [[GROUPS[1], 2], [GROUPS[2], 2]]) {
   circle(colX(g.from + i + 0.5) + 5.5, fnKeyY - CAP / 2 - 2.4, LED_D - 0.5);
+  twin.leds.push({ id: g.keys[i][1], x: colX(g.from + i + 0.5) + 5.5, y: fnKeyY - CAP / 2 - 2.4, d: LED_D - 0.5 });
 }
 
 // Chord grid: note names on top, row labels on the left (keycaps stay blank)
@@ -217,6 +233,7 @@ ROWS.forEach(([label, color], r) => {
     const cx = colX(i + 0.5);
     rect(cx - KEY_CUT / 2, cy - KEY_CUT / 2, KEY_CUT, KEY_CUT);
     guides.push({ type: 'rect', x: cx - CAP / 2, y: cy - CAP / 2, w: CAP, h: CAP, role: 'key', fill: color });
+    twin.keys.push({ type: r, root: i, x: cx, y: cy, color });
   }
 });
 
@@ -230,7 +247,11 @@ const nCols = Math.floor((STRUM_W - 2 * GRILLE_INSET - GRILLE_HOLE - GRILLE_PITC
 const gy0 = spkY0 + (spkH - (nRows - 1) * rowStep) / 2;
 const gx0 = strumX0 + (STRUM_W - (nCols - 1) * GRILLE_PITCH - GRILLE_PITCH / 2) / 2;
 for (let r = 0; r < nRows; r++) {
-  for (let c = 0; c < nCols; c++) circle(gx0 + c * GRILLE_PITCH + (r % 2 ? GRILLE_PITCH / 2 : 0), gy0 + r * rowStep, GRILLE_HOLE);
+  for (let c = 0; c < nCols; c++) {
+    const x = gx0 + c * GRILLE_PITCH + (r % 2 ? GRILLE_PITCH / 2 : 0), y = gy0 + r * rowStep;
+    circle(x, y, GRILLE_HOLE);
+    twin.grille.push([x, y]);
+  }
 }
 guides.push({ type: 'rect', x: strumX0 + (STRUM_W - SPEAKER[0]) / 2, y: spkY0 + (spkH - SPEAKER[1]) / 2, w: SPEAKER[0], h: SPEAKER[1], role: 'part' });
 
@@ -242,6 +263,7 @@ for (let i = 0; i < STRUM_N; i++) {
 }
 text(strumX0 + STRUM_W / 2, strumY0 - 1.6, 'STRUMPLATE · HIGH ▲', 2.2);
 text(strumX0 + STRUM_W / 2, H - 4, '▼ LOW', 2.3);
+twin.strum = { x: strumX0, y: strumY0, w: STRUM_W, h: strumH, n: STRUM_N, pad: STRUM_PAD, pitch: STRUM_PITCH, gap: STRUM_GAP };
 
 // ── What sits under the panel ───────────────────────────────────────────────
 // Boxes in panel coordinates (x, y as above) and height z above the base
@@ -558,6 +580,11 @@ async function render(corteSvg, visualSvg, internoSvg) {
   fs.writeFileSync(path.join(OUT, 'painel-corte.svg'), corte);
   fs.writeFileSync(path.join(OUT, 'painel-visual.svg'), visual);
   fs.writeFileSync(path.join(OUT, 'painel-corte.dxf'), dxf());
+  const r3 = o => JSON.parse(JSON.stringify(o, (_, v) => typeof v === 'number' ? f(v) : v));
+  fs.writeFileSync(path.join(OUT, 'layout.json'), JSON.stringify(r3({
+    panel: { w: W, h: H, frame: FRAME_T }, cap: CAP, holeD: GRILLE_HOLE, mountD: MOUNT_D, slotW: SLIDER_SLOT_W,
+    sliderCap: SLIDER_CAP, ...twin, texts,
+  })) + '\n');
   const inside = interno();
   fs.writeFileSync(path.join(OUT, 'painel-interno.svg'), inside);
   await render(corte, visual, inside);
