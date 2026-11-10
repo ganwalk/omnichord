@@ -22,7 +22,7 @@ firmware vai reproduzir a mesma lógica de `src/theory.ts`, `patterns.ts`, `arp.
 | Legendas | No painel: notas acima das colunas e tipo de acorde ao lado das fileiras (opção "c") |
 | Strumplate | Coluna à direita, abaixo do alto-falante: PCB com 24 trilhas horizontais (passo de ~9 mm) e plano de terra, lida por 2 × MPR121, coberta por acrílico de 1 mm. Nunca coberta por madeira. |
 | Controles | 10 sliders soldados na placa (o painel só tem os rasgos), encoder com botão (MENU), oitava pelas teclas OCT − / OCT + (o valor aparece no visor) |
-| Visores | "Sys monitor": OLED verde de 2,42" (SSD1309) com o robô, os mesmos rostos e tempos do app. "Chord display": 2 × mostradores verdes de 14 segmentos com 4 caracteres (HT16K33). Os dois ficam num barramento I²C separado do sensor da strumplate. |
+| Visores | **Duas telas OLED iguais de 2,42" (SSD1309, 128 × 64, verdes)**, lado a lado: "Sys monitor" com o robô (mesmos rostos e tempos do app) e "Chord display" com o acorde desenhado em estilo de LED. Mesmo modelo, mesma janela e mesma altura; o espaçamento segue o tamanho da placa do módulo (~71 × 41 mm). Use as versões SPI (cada tela com seu pino de seleção), num barramento separado do sensor da strumplate. |
 | Painel | Placa de circuito usada como painel: fibra de vidro preta, serigrafia branca, acabamento dourado (ENIG), dividida em 2 partes (controles e coluna da direita), presas à madeira por parafusos M3. A maquete é em MDF cortado a laser. |
 | Moldura | Madeira maciça (freijó ou cedro, com detalhes em imbuia), base de compensado multilaminado, rebaixo onde o painel apoia, buchas roscadas M4, furos oblongos para a madeira se mover |
 | Blindagem | Fita de alumínio por dentro da moldura, ligada ao terra; aterramento em estrela |
@@ -49,19 +49,18 @@ Duas zonas, e cada uma é uma parte do painel:
 
 - **Esquerda (controles):** tudo segue as 12 colunas das teclas (19,05 mm), então
   os controles têm exatamente a largura da grade de acordes. De cima para baixo:
-  1. Marca e LEDs BEAT/MIDI.
-  2. POWER, SYS MONITOR (robô, colunas 1–3), CHORD DISPLAY (colunas 4–9) e o
-     encoder MENU (colunas 10–12).
-  3. Sliders em três grupos: MIXER (colunas 1–6), RHYTHM (7–9) e ARPEGGIATOR (10–12).
-  4. Teclas de função, cada uma embaixo do grupo dela. A tecla de liga/desliga
+  1. POWER, as duas telas (SYS MONITOR e CHORD DISPLAY), a marca com os LEDs
+     BEAT/MIDI e o encoder MENU (colunas 10–12).
+  2. Sliders em três grupos: MIXER (colunas 1–6), RHYTHM (7–9) e ARPEGGIATOR (10–12).
+  3. Teclas de função, cada uma embaixo do grupo dela. A tecla de liga/desliga
      de cada grupo (PLAY, ARP) fica na ponta direita, mais perto da mão que
      dedilha, com um LED ao lado. TAP tempo = SHIFT + PLAY.
-  5. Nomes das notas e a grade de 6 × 12 acordes.
+  4. Nomes das notas e a grade de 6 × 12 acordes.
 - **Direita:** grade retangular do alto-falante em cima (mesma largura da strumplate, para a coluna formar um bloco só) e strumplate embaixo, com as 24 cordas na
   horizontal, do agudo (fundo) ao grave (perto de quem toca), como no app com o
   celular em pé. O firmware pode inverter a ordem.
 
-Medidas do rascunho: painel com **409 × 317 mm**; com a moldura, **469 × 347 mm**.
+Medidas do rascunho: painel com **409 × 305 mm**; com a moldura, **469 × 335 mm**.
 Strumplate de 110 × 231 mm, com cordas a cada ~9 mm.
 
 ### Pensado para a montagem

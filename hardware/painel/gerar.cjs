@@ -46,7 +46,7 @@ const STRUM_W = 110;       // strumplate window width (string length)
 const STRUM_GAP = 3;       // gap between neighbouring copper strips (guide)
 const STRUM_PAD = 4;       // window margin around the strips
 
-const TOP_H = 66;          // displays band (and speaker, on the right)
+const TOP_H = 54;          // displays band (and speaker, on the right)
 const SLIDER_H = 74;       // slider row
 const FN_H = 30;           // function row (label + key)
 const HEADER_H = 9;        // note names above the grid
@@ -55,8 +55,9 @@ const SLIDER_TRAVEL = 45;  // CHECK: slide pot travel
 const SLIDER_SLOT_W = 3;   // CHECK: lever width + clearance
 const SLIDER_CAP = [10, 18]; // CHECK: slider knob footprint (guide)
 
-const OLED_WIN = [58, 31];     // CHECK: 2.42" SSD1309 visible area + 1 mm
-const SEG_WIN = [102, OLED_WIN[1]]; // CHECK: 2 × 0.54" quad 14-segment displays side by side; same height as SYS MONITOR (the 19 mm digits sit centred behind the tinted acrylic)
+const OLED_WIN = [58, 31];     // CHECK: 2.42" SSD1309 visible area + 1 mm (both screens are this model)
+const OLED_MODULE = [71, 41];  // CHECK: the module's circuit board behind the panel (sets the spacing)
+const OLED_GAP = 3;            // between the two modules' boards
 const POWER_D = 16;            // CHECK: power push button
 const LED_D = 3;               // status LEDs (light through the panel)
 const ENCODER_D = 7;           // CHECK: rotary encoder thread
@@ -135,31 +136,36 @@ for (const [x1, x2] of [[0, seamX], [seamX, W]]) {
   for (const x of [x1 + MOUNT_INSET, x2 - MOUNT_INSET]) circle(x, H / 2, MOUNT_D);
 }
 
-// Top band: brand line, then power · robot screen (cols 0–2) · chord display (cols 3–8) · encoder (cols 9–11)
-const brandY = topY0 + 6;
-text(gridX0, brandY, 'OMNIHARP', 6, 'start', 'bold');
-text(gridX0 + 44, brandY, 'CHORD SYNTH · GANWALK', 2.4, 'start');
-['BEAT', 'MIDI'].forEach((lbl, i) => {
-  const x = colX(9.6 + i * 1.4);
-  circle(x, brandY - 2, LED_D);
-  text(x + 3, brandY - 1.1, lbl, 2.2, 'start');
-});
-
-const dispY = topY0 + 13, dispMid = dispY + OLED_WIN[1] / 2, dispLabelY = dispY + OLED_WIN[1] + 6;
+// Top band: power · two identical OLED screens (robot, chord) · brand + status
+// LEDs · MENU encoder (cols 9–11). The screens are spaced by their boards,
+// which are much larger than the visible glass.
+const dispY = topY0 + 5, dispMid = dispY + OLED_WIN[1] / 2, dispLabelY = dispY + OLED_WIN[1] + 6;
 circle(M + LABEL_W / 2, dispMid - 3, POWER_D);
 circle(M + LABEL_W / 2, dispMid + 12, LED_D);
 text(M + LABEL_W / 2, dispLabelY, 'POWER', 2.3);
 
-const oledX = colX(1.5) - OLED_WIN[0] / 2;
-rect(oledX, dispY, OLED_WIN[0], OLED_WIN[1], 2);
-guides.push({ type: 'rect', x: oledX - 2, y: dispY - 4, w: OLED_WIN[0] + 4, h: OLED_WIN[1] + 8, role: 'part' });
-guides.push({ type: 'robot', x: colX(1.5), y: dispMid });
-text(colX(1.5), dispLabelY, 'SYS MONITOR', 2.3);
+const screen = (col, label, guide) => {
+  const x = colX(col) - OLED_WIN[0] / 2;
+  rect(x, dispY, OLED_WIN[0], OLED_WIN[1], 2);
+  guides.push({ type: 'rect', x: colX(col) - OLED_MODULE[0] / 2, y: dispMid - OLED_MODULE[1] / 2,
+    w: OLED_MODULE[0], h: OLED_MODULE[1], role: 'part' });
+  guides.push({ type: guide, x: colX(col), y: dispMid });
+  text(colX(col), dispLabelY, label, 2.3);
+};
+const powerEdge = M + LABEL_W / 2 + POWER_D / 2 + 1;               // right edge of the power button + 1 mm
+const scr1 = (powerEdge + OLED_MODULE[0] / 2 - gridX0) / P;        // in columns
+const scr2 = scr1 + (OLED_MODULE[0] + OLED_GAP) / P;
+screen(scr1, 'SYS MONITOR', 'robot');
+screen(scr2, 'CHORD DISPLAY', 'seg');
 
-const segX = colX(6) - SEG_WIN[0] / 2;
-rect(segX, dispMid - SEG_WIN[1] / 2, SEG_WIN[0], SEG_WIN[1], 1.5);
-guides.push({ type: 'seg', x: colX(6), y: dispMid });
-text(colX(6), dispLabelY, 'CHORD DISPLAY', 2.3);
+const brandCol = (scr2 + OLED_MODULE[0] / 2 / P + 10.5 - ENCODER_KNOB_R / P) / 2;
+text(colX(brandCol), dispMid - 3, 'OMNIHARP', 6.5, 'middle', 'bold');
+text(colX(brandCol), dispMid + 2.5, 'CHORD SYNTH · GANWALK', 2.3);
+['BEAT', 'MIDI'].forEach((lbl, i) => {
+  const x = colX(brandCol - 0.65 + i * 1.3);
+  circle(x, dispMid + 10, LED_D);
+  text(x, dispLabelY, lbl, 2.2);
+});
 
 circle(colX(10.5), dispMid, ENCODER_D);
 guides.push({ type: 'circle', cx: colX(10.5), cy: dispMid, r: ENCODER_KNOB_R, role: 'knob' });
@@ -257,7 +263,7 @@ function guideSvg(g, visual) {
     return `<text class="robot" x="${f(g.x)}" y="${f(g.y + 1)}">(◉ω◉)</text>` +
       `<text class="robot small" x="${f(g.x)}" y="${f(g.y + 8)}">CHORD!</text>`;
   }
-  if (g.type === 'seg') return `<text class="seg" x="${f(g.x)}" y="${f(g.y + 3.2)}">C#m7</text>`;
+  if (g.type === 'seg') return `<text class="seg" x="${f(g.x)}" y="${f(g.y + 4)}">C#m7</text>`;
   if (g.type === 'line') return `<line class="g-${g.role}" x1="${f(g.x1)}" y1="${f(g.y1)}" x2="${f(g.x2)}" y2="${f(g.y2)}"/>`;
   if (g.type === 'circle') return `<circle class="g-${g.role}" cx="${f(g.cx)}" cy="${f(g.cy)}" r="${g.r}"/>`;
   const fill = visual && g.fill ? ` style="fill:${g.fill}"` : '';
@@ -300,7 +306,7 @@ function svg(visual) {
   text { font-family: 'DejaVu Sans', Arial, sans-serif; }
   .silk { text-anchor: middle; }
   .robot, .seg { text-anchor: middle; font-family: 'DejaVu Sans Mono', 'Courier New', monospace; font-weight: bold; }
-  .robot { font-size: 7px; } .robot.small { font-size: 3px; letter-spacing: .8px; } .seg { font-size: 10px; letter-spacing: 2px; }
+  .robot { font-size: 7px; } .robot.small { font-size: 3px; letter-spacing: .8px; } .seg { font-size: 11px; letter-spacing: 1px; }
   .title { font-size: 3.2px; } .scale { font-size: 2.6px; }
   .scale-line { stroke-width: .3; }
   ${theme}
