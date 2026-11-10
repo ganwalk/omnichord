@@ -22,6 +22,9 @@ export function glideSources(prev: readonly number[], next: readonly number[]): 
   return next.map((_, i) => prev[Math.min(i, prev.length - 1)]);
 }
 
+/** Lowest bass note (C1, 32.7 Hz); at octave −2 the bass stays on the root instead. */
+const BASS_MIN = 24;
+
 export class ChordVoice {
   private voices: Voice[] = [];
   /** MIDI notes of the sounding chord, the starting point of a glide. */
@@ -39,7 +42,8 @@ export class ChordVoice {
     this.release(when);
     const ctx = this.eng.ctx, t = when ?? ctx.currentTime;
     const notes = chordMidi(root, intervals, 3 + octave);
-    const bass = notes[0] - 12;
+    // The bass doubles the root an octave down, unless that falls below C1.
+    const bass = notes[0] - 12 >= BASS_MIN ? notes[0] - 12 : notes[0];
     const slide = glide > 0 && prev !== null;
     const from = slide ? glideSources(prev.notes, notes) : notes;
     const bassFrom = slide ? prev.bass : bass;

@@ -4,7 +4,7 @@
 
 import { ARP_MODE_NAMES } from './arp';
 import { PATTERNS } from './patterns';
-import { BPM_MAX, BPM_MIN, DEFAULT_SETTINGS, type Settings } from './settings';
+import { BPM_MAX, BPM_MIN, DEFAULT_SETTINGS, OCTAVE_MAX, OCTAVE_MIN, type Settings } from './settings';
 
 const KEY = 'omniharp:settings:v1';
 /** Key used before the app was renamed from OmniSound; read once as a fallback. */
@@ -23,7 +23,9 @@ export function sanitizeSettings(raw: unknown): Settings {
 
   for (const k of UNIT_KEYS) if (isNum(r[k])) s[k] = clamp(r[k], 0, 1);
   if (isNum(r.bpm)) s.bpm = Math.round(clamp(r.bpm, BPM_MIN, BPM_MAX));
-  if (r.octave === -1 || r.octave === 0 || r.octave === 1) s.octave = r.octave;
+  if (isNum(r.octave) && Number.isInteger(r.octave) && r.octave >= OCTAVE_MIN && r.octave <= OCTAVE_MAX) {
+    s.octave = r.octave as Settings['octave'];
+  }
   if (typeof r.pattern === 'string' && PATTERNS.some(p => p.name === r.pattern)) s.pattern = r.pattern;
   if (typeof r.arpMode === 'string' && ARP_MODE_NAMES.includes(r.arpMode)) s.arpMode = r.arpMode;
   if (r.key === null || (isNum(r.key) && Number.isInteger(r.key) && r.key >= 0 && r.key < 12)) s.key = r.key;

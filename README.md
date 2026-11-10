@@ -25,6 +25,15 @@ offline) e empacotado como app nativo Android/iOS com Capacitor.
 | Celular deitado | grade com 3 linhas de acordes por vez (⇅ alterna básicos/estendidos), strumplate ao lado, controles no painel ⚙ |
 | Celular em pé | grade transposta (12 notas × 3 tipos), strumplate vertical à direita (graves embaixo), controles no painel ⚙ |
 
+## Instrumento físico
+
+A pasta [`hardware/`](hardware/README.md) tem o projeto da versão física: painel em
+tamanho real, fiação, modelo STEP e um **gêmeo digital** para tocar o instrumento
+físico no navegador, em painel ou em 3D.
+
+- `/3d` abre o gêmeo direto no 3D (no site: `omniharp.vercel.app/3d`)
+- `/gemeo` (ou `/twin.html`) abre o gêmeo no painel
+
 ## Desenvolvimento
 
 Requer Node 20.19+.
